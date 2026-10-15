@@ -20,6 +20,8 @@ param(
     [int] $TimeoutMinutes = 20
 )
 $ErrorActionPreference = 'Stop'
+# pwsh -File passes a comma-separated list as one string
+$Projects = @($Projects | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 
 # Expected results (README, "Expected review results"). Each pattern must match exactly one line of its section.
 $Expected = @{
