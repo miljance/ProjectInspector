@@ -22,7 +22,7 @@ All demo content is fictional (CRONUS US style). **Never add real customer, comp
 5. The answer comes back through the `clarificationAnswers` API and Project Inspector reviews again.
 6. The project engineer sets status Quote.
 
-The demos are recorded, not live. Environment: BC 29 sandbox, company CRONUS USA (currency USD). Scribe Agent uses the OCPF APIs v3 and the MCP configuration `SCRIBE-AGENT`. The demo data and the rules document `Contoso Project Templates and Policies.md` are kept with the session material, not in this repo.
+The demos are recorded, not live. Environment: BC 29 sandbox (US localization, currency USD); the demo data sits in its own company. Scribe Agent uses the OCPF APIs v3 and the MCP configuration `SCRIBE-AGENT`. The demo data and the rules document `Contoso Project Templates and Policies.md` are kept with the session material, not in this repo.
 
 ## How it works
 
@@ -32,7 +32,7 @@ The demos are recorded, not live. Environment: BC 29 sandbox, company CRONUS USA
 | --- | --- | --- |
 | Submit for Review | Scribe Agent calls the bound action `submitForReview` on `projectReviews` through the MCP server | `PI Review Trigger`.SubmitForReview |
 | Send to Project Inspector | Action on the Project Card | `PI Review Trigger`.SubmitForReview |
-| Status changes back to Planning | `OnAfterValidateEvent` of Job.Status (existing projects only, never blocks the change) | `PI Review Trigger`.OnAfterStatusValidated |
+| Status changes back to Planning | `OnAfterValidate` of Status in table extension `PI Job` (existing projects only, never blocks the change) | `PI Review Trigger`.OnAfterStatusValidated |
 
 All three create one agent task per project: title and message `Review <No.>`, External ID = project No. A second trigger for the same project adds a message to the existing task.
 
@@ -98,14 +98,16 @@ They were tuned on the six demo projects below, so after a change run all six ag
 
 | Project | Status | Total | Days | Findings | Questions |
 | --- | --- | --- | --- | --- | --- |
-| FAB-01-IMP | OPEN POINTS | 75,250 | 44 | – | Please split the 38 days in task 003010 by phase (PCR-23) |
+| FAB-01-IMP | OPEN POINTS | 75,250 | 44 | – | Please split the 38 days in task 003010 by phase (PCR-23); App users, Travel and Go-live from the Open Points field (PCR-24) |
 | TAI-01-IMP | ERRORS | 20,025 | 15 | Unit Price 1,100 instead of 1,250 (PCR-14); Discount of 375 (PCR-16) | Quote number for block 003000 (PCR-12) |
 | PRO-01-WSH | ERRORS | 3,150 | 2 | Standard block 001000..001900 missing (PCR-10) | Workshop dates for task 001010 (PCR-22) |
 | LIT-01-SUP | ERRORS | 8,400 | 0 | Customer Litware Inc. (C90040) is blocked (PCR-07) | Start/end date (PCR-20); 60 hours contingent (PCR-23) |
 | WWI-01-IMP | ERRORS | 19,500 | 10 | Possible duplicate WWI-02-IMP (PCR-03) | 50 hours contingent (PCR-23) |
 | WWI-02-IMP | ERRORS | 12,500 | 10 | Possible duplicate WWI-01-IMP (PCR-03) | Quote number for block 002000 (PCR-12); split 10 days in 002010 (PCR-23) |
 
-These results come from the Agent Designer version of the agent. Step 8 of the instructions (answers) was added later and is not verified yet.
+FAB-01-IMP carries the four open points Scribe Agent writes for it (users, travel, go-live, split of days) in the Open Points field. The RapidStart packages do not fill that field: after loading the demo data, set it with a PATCH on `projectReviews`. The split of days is asked once, by step 6c.
+
+The other five results come from the Agent Designer version of the agent. The first run of the coded agent on FAB-01-IMP also asked for workshop dates on the travel task; step 6e now only looks at SERVICES lines. Step 6f (Open Points field) and step 8 (answers) are new, so run all six projects again before recording.
 
 ## Design decisions
 
@@ -116,6 +118,8 @@ These results come from the Agent Designer version of the agent. Step 8 of the i
 - **The business event is raised by code** (analysis of the output message), so the instructions stay unchanged.
 - **Dispatcher interface + provider** exist only to make the triggers testable without an activated agent.
 - **Answers come in through a table + API page** (`clarificationAnswers`), not a bound action with parameters: simple for Power Automate, and it keeps a log.
+- **Questions go to the salesperson whenever the report has some**, also when it has findings (status ERRORS): only the salesperson can answer them, and the findings stay in the report for the project engineer.
+- **The answer is passed on as text.** Project Inspector is read-only and does not change planning lines; whoever applies the answer (the engineer, or Scribe Agent) changes the project, and the next review sees the change.
 
 ### BC 29 agent API notes
 
@@ -129,7 +133,7 @@ Checked against the System Application source:
 ## Next steps
 
 1. **Agent end to end in the sandbox.** Set the agent up (see [Set up](#set-up)), run **Send to Project Inspector** on all six demo projects and compare with [Expected review results](#expected-review-results). Check that a second send adds a message to the same task, and that a change from Quote back to Planning starts a review.
-2. **Clarification loop in Teams.** Check that the business event is raised from the output message. That message is a draft until reviewed, so decide whether that is fine for the demo or raise the event later. Build the Power Automate flow and check that the answer reaches the same task and the agent does not ask again about answered points. Done when the FAB-01-IMP question goes to Teams and the answer produces a new report.
+2. **Clarification loop in Teams.** The agent's report is an outgoing message in status Draft until a user chooses **Continue** in the task pane. Check whether the business event is raised when the draft is written or only after **Continue**, and decide which one the demo needs. With four FAB questions the `Questions` parameter is about 220 of its 250 characters. Build the Power Automate flow and check that the answer reaches the same task and the agent does not ask again about answered points. Done when the FAB-01-IMP question goes to Teams and the answer produces a new report.
 3. **Scribe Agent integration.** Add page 50102 `projectReviews` to the MCP configuration `SCRIBE-AGENT` (Read + Modify, bound actions allowed) and check that `submitForReview` shows up as a tool in Copilot Studio.
    - Scribe call order: customers → existing projects (PCR-03) → POST project → POST tasks → POST planning lines (no unit price) → PATCH `openPoints` → `submitForReview` once.
    - Scribe uses OCPF API pages 90842, 90846, 90854, 90910, 90912 and 90913. Test one planning line POST through page 90913 by hand first: on that page `jobTaskNo` is validated after `no` and `quantity`.

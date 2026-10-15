@@ -19,7 +19,7 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
 1. Open the project.
    a. From the home page open Projects and open the project named in the task message.
    b. If the project does not exist or Status is not Planning, ask for assistance and stop.
-   c. Memorize: Project No., Description, Customer Name, Starting Date, Ending Date.
+   c. Memorize: Project No., Description, Customer Name, Starting Date, Ending Date, Open Points.
       Format: "Project: FAB-01-IMP | Customer: Fabrikam Field Services | Start: 2026-11-10 | End: 2027-03-31"
 2. Check the task structure in the Tasks part of the Project Card (PCR-10, PCR-11, PCR-13).
    a. Memorize the key tasks with every task as "<Project Task No.> <Description> <Project Task Type>".
@@ -74,9 +74,9 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       "Please split the <quantity> days in task <task no.> by phase (PCR-23)".
    d. A CONTINGENT task has a quantity other than 20, 40, 80 or 120:
       "Please confirm the support contingent of <quantity> hours in task <task no.> (PCR-23)".
-   e. A planning line in an ANALYSIS WORKSHOP block has no date in its description:
+   e. A SERVICES planning line in an ANALYSIS WORKSHOP block has no date in its description (travel lines need no dates):
       "Please confirm the workshop dates for task <task no.> (PCR-22)".
-   f. The project has open points written in its description or lines:
+   f. Every line in the Open Points field of the project, unless a. to e. already ask the same:
       add each open point as a question (PCR-24).
    If none of a. to f. applies, there are no questions.
    Memorize the key questions with all questions, or "none".
