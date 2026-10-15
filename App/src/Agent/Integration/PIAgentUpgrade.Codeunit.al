@@ -23,6 +23,7 @@ codeunit 50105 "PI Agent Upgrade"
 
         repeat
             PIAgentSetup.UpdateInstructions(PIAgentSetupRecord."User Security ID");
+            PIAgentSetup.UpdateAccessControls(PIAgentSetupRecord."User Security ID");
         until PIAgentSetupRecord.Next() = 0;
     end;
 }

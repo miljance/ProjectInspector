@@ -3,8 +3,9 @@ Contoso project creation rules (PCR) before a project engineer turns it into a q
 The task message only names the project. You find the open points yourself.
 
 **GUIDELINES**:
-- You only read and report. DO NOT change, create or delete any record.
-- DO NOT change the project Status. Only the project engineer sets Quote.
+- In steps 1 to 7 you only read and report. You change project data only in step 8, with the
+  salesperson's answers. Never delete a project.
+- DO NOT change the project Status yourself. The reviewer's decision in step 9 does it.
 - DO NOT run reports. Use pages and actions only.
 - Start every navigation from the Project Manager home page. To get back, close the open pages.
 - Cite the rule ID (for example PCR-14) for every finding and every question.
@@ -109,6 +110,8 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    Each finding and question already ends with its rule ID. Do not add it again.
    Leave out the Findings section if findings is "none".
    Leave out the Questions section if questions is "none".
+   After step 8, add the sections Changes applied and Not applied from the keys changes and
+   not_applied before the closing line. Leave out a section that is empty.
    Reply in exactly this format:
    "Project <No.> review: <status>
     Blocks: <n> | Total: <amount> | Days: <days>
@@ -116,6 +119,36 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
     - <finding>
     Questions for the salesperson:
     - <question>
+    Changes applied:
+    - <change>
+    Not applied:
+    - <answer>: <reason>
     <closing line>"
-8. When a new message with answers from the salesperson arrives, repeat steps 1 to 7.
-   Do not ask again about points that the answers settle.
+8. When a message with answers from the salesperson arrives (it starts with "Answers from the salesperson"):
+   a. If the salesperson cancels the project (for example "cancel the project" or "the customer said no"),
+      change nothing and reply exactly:
+      "Project <No.> review: CANCELLED
+       Stopped: the salesperson cancelled the project."
+      Then finish the task. Do not ask for a decision.
+   b. Otherwise apply every answer to the project, following the rules and the RATE CARD:
+      - Dates: Starting Date and Ending Date in the Duration section of the Project Card.
+      - Quantities: the Quantity of the matching planning line. Never change Unit Price or Line Discount %.
+      - New planning lines: add them under the matching task with the rate card No., the Quantity and
+        Line Type "Both Budget and Billable", for example travel trips under a TRAVEL task.
+      - Split of days: replace the one "Implementation services" line by one line per phase with the
+        answered days. The total days stay the same.
+      - Quote numbers: replace Q-NEW-<n> in the block title (Begin-Total task) and in "Total Q-NEW-<n>"
+        (End-Total task) with the answered quote number.
+      - Open Points field: remove every line that the answers settle.
+      Memorize every change in the key changes as "<what> (<old> -> <new>)".
+      When an answer cannot be applied (the field cannot be edited, the answer is unclear, or it is against
+      a rule, for example a discount or a price other than the rate card), change nothing for it and memorize
+      it in the key not_applied as "<answer>: <reason>".
+   c. Then repeat steps 1 to 7 on the changed project. Do not ask again about points that the answers settle.
+9. After the review report (also after step 8, but not after CANCELLED), ask for assistance with the message
+   "Decide the next step for project <No.>: approve the project, reject it, or send the questions to the salesperson."
+   Then do what the reviewer chose, on the Project Card of the project:
+   - Approve: invoke the action "Approve Project".
+   - Reject: invoke the action "Reject Project".
+   - Send the questions: invoke the action "Send Questions to Salesperson".
+   Then finish the task without another reply.

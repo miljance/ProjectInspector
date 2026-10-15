@@ -18,6 +18,7 @@ codeunit 50103 "PI Agent Setup"
         Agent: Codeunit Agent;
         BaseApplicationAppIdTok: Label '437dbf0e-84ff-417a-965d-ed2bb9650972', Locked = true;
         DefaultPermissionSetTok: Label 'D365 READ', Locked = true;
+        AgentEditPermissionSetTok: Label 'PI AGENT EDIT', Locked = true;
         DefaultProfileTok: Label 'PROJECT MANAGER', Locked = true;
         InstructionsResourceTok: Label 'Instructions/InstructionsV1.txt', Locked = true;
         AgentInitialsLbl: Label 'PI', MaxLength = 4;
@@ -58,15 +59,38 @@ codeunit 50103 "PI Agent Setup"
     end;
 
     /// <summary>
-    /// Read-only access: the agent never changes data.
+    /// D365 READ for the review, and PI Agent Edit to apply the salesperson's answers to the project (step 8).
     /// </summary>
     procedure GetDefaultAccessControls(var TempAccessControlBuffer: Record "Access Control Buffer" temporary)
+    var
+        CurrentModuleInfo: ModuleInfo;
     begin
-        Clear(TempAccessControlBuffer);
+        NavApp.GetCurrentModuleInfo(CurrentModuleInfo);
+        TempAccessControlBuffer.Reset();
+        TempAccessControlBuffer.DeleteAll();
+        AddAccessControl(TempAccessControlBuffer, GetBaseApplicationAppId(), DefaultPermissionSetTok);
+        AddAccessControl(TempAccessControlBuffer, CurrentModuleInfo.Id(), AgentEditPermissionSetTok);
+    end;
+
+    /// <summary>
+    /// Gives an existing agent the current default permissions. Called on upgrade, because agents created
+    /// before version 2.0 only had D365 READ.
+    /// </summary>
+    procedure UpdateAccessControls(AgentUserSecurityId: Guid)
+    var
+        TempAccessControlBuffer: Record "Access Control Buffer" temporary;
+    begin
+        GetDefaultAccessControls(TempAccessControlBuffer);
+        Agent.UpdateAccessControl(AgentUserSecurityId, TempAccessControlBuffer);
+    end;
+
+    local procedure AddAccessControl(var TempAccessControlBuffer: Record "Access Control Buffer" temporary; AppId: Guid; RoleId: Code[20])
+    begin
+        TempAccessControlBuffer.Init();
         TempAccessControlBuffer."Company Name" := CopyStr(CompanyName(), 1, MaxStrLen(TempAccessControlBuffer."Company Name"));
         TempAccessControlBuffer.Scope := TempAccessControlBuffer.Scope::System;
-        TempAccessControlBuffer."App ID" := GetBaseApplicationAppId();
-        TempAccessControlBuffer."Role ID" := DefaultPermissionSetTok;
+        TempAccessControlBuffer."App ID" := AppId;
+        TempAccessControlBuffer."Role ID" := RoleId;
         TempAccessControlBuffer.Insert();
     end;
 
