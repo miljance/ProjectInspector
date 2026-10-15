@@ -16,6 +16,7 @@ permissionset 50100 "PI Project Inspector"
         page "PI Project Reviews API" = X,
         page "PI Clarification Answers API" = X,
         page "PI Clarification Answers" = X,
+        page "PI Agent Status API" = X,
         codeunit "PI Review Trigger" = X,
         codeunit "PI Business Events" = X;
 }

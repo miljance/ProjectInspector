@@ -56,6 +56,7 @@ Base URL: `/api/contoso/projectInspector/v1.0/companies({companyId})/`
 | --- | --- | --- |
 | `projectReviews` (GET, PATCH `openPoints`, action `submitForReview`) | 50102 | Scribe Agent through the MCP server (configuration `SCRIBE-AGENT`, Read + Modify) |
 | `clarificationAnswers` (POST) | 50103 | Power Automate |
+| `agentStatuses` (GET) | 50105 | Checking a deployment: instructions version and counters of each agent |
 
 ## Set up
 
@@ -91,7 +92,7 @@ Write tests first, with Given/When/Then comments and one behaviour per test. Cha
 
 ## Agent instructions
 
-The instructions are in `App/.resources/Instructions/InstructionsV1.txt`. To change them, edit the file, raise the version in `App/app.json` and publish: `PI Agent Upgrade` sets the new instructions on every Project Inspector agent. The agent summary (from the agent card) shows **Instructions version** and when it was set; check it after publishing, because Business Central cannot show the instructions themselves.
+The instructions are in `App/.resources/Instructions/InstructionsV1.txt`. To change them, edit the file, raise the version in `App/app.json` and publish: `PI Agent Upgrade` sets the new instructions on every Project Inspector agent. After publishing, check **Instructions version** in the agent setup dialog or with GET `agentStatuses`: Business Central cannot show the instructions themselves.
 
 They were tuned on the six demo projects below, so after a change run all six again. `PI Report Parser` reads the report format of step 7: if the format changes, change the parser and the samples in `Test/src/Library/PITestLibrary.Codeunit.al` together.
 

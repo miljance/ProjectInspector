@@ -26,6 +26,24 @@ page 50100 "PI Agent Setup"
                 ApplicationArea = All;
                 UpdatePropagation = Both;
             }
+            group(Instructions)
+            {
+                Caption = 'Instructions';
+                Visible = not IsNewAgent;
+
+                field(InstructionsVersion; InstructionsVersion)
+                {
+                    Caption = 'Instructions version';
+                    ToolTip = 'Specifies the app version whose instructions were last set on the agent. New tasks use these instructions; a task keeps the instructions it was created with.';
+                    Editable = false;
+                }
+                field(InstructionsUpdatedAt; InstructionsUpdatedAt)
+                {
+                    Caption = 'Instructions updated at';
+                    ToolTip = 'Specifies when the instructions were last set on the agent.';
+                    Editable = false;
+                }
+            }
         }
     }
 
@@ -52,10 +70,14 @@ page 50100 "PI Agent Setup"
         TempAgentSetupBuffer: Record "Agent Setup Buffer";
         AzureOpenAI: Codeunit "Azure OpenAI";
         IsUpdated: Boolean;
+        IsNewAgent: Boolean;
+        InstructionsVersion: Text[30];
+        InstructionsUpdatedAt: DateTime;
         CapabilityNotEnabledErr: Label 'The Project Inspector capability is not enabled in Copilot & agent capabilities.\\Enable the capability before you set up the agent.';
 
     trigger OnOpenPage()
     var
+        PIAgentKPI: Record "PI Agent KPI";
         PIAgentSetup: Codeunit "PI Agent Setup";
         UserSecurityIDFilter: Text;
         UserSecurityID: Guid;
@@ -68,6 +90,11 @@ page 50100 "PI Agent Setup"
             Clear(UserSecurityID);
 
         Rec."User Security ID" := UserSecurityID;
+        IsNewAgent := IsNullGuid(UserSecurityID);
+        if PIAgentKPI.Get(UserSecurityID) then begin
+            InstructionsVersion := PIAgentKPI."Instructions Version";
+            InstructionsUpdatedAt := PIAgentKPI."Instructions Updated At";
+        end;
 
         CurrPage.AgentSetupPart.Page.Initialize(
             UserSecurityID,
