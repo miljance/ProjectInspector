@@ -41,6 +41,12 @@ table 50101 "PI Agent KPI"
             ToolTip = 'Specifies when the instructions were last set on the agent.';
             Editable = false;
         }
+        field(22; "Reports Checked From"; DateTime)
+        {
+            Caption = 'Reports checked from';
+            ToolTip = 'Specifies from when the report monitor reads the replies of the agent. Older replies are not sent to the salesperson.';
+            Editable = false;
+        }
     }
 
     keys
@@ -71,6 +77,19 @@ table 50101 "PI Agent KPI"
         Rec."Instructions Version" := InstructionsVersion;
         Rec."Instructions Updated At" := CurrentDateTime();
         Rec.Modify();
+    end;
+
+    /// <summary>
+    /// Returns from when the report monitor reads replies; the first call sets it to now.
+    /// </summary>
+    procedure StartReportCheck(AgentUserSecurityId: Guid): DateTime
+    begin
+        GetOrCreate(AgentUserSecurityId);
+        if Rec."Reports Checked From" = 0DT then begin
+            Rec."Reports Checked From" := CurrentDateTime();
+            Rec.Modify();
+        end;
+        exit(Rec."Reports Checked From");
     end;
 
     local procedure GetOrCreate(AgentUserSecurityId: Guid)

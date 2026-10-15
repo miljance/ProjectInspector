@@ -38,7 +38,7 @@ All three create one agent task per project: title and message `Review <No.>`, E
 
 ### Questions to the salesperson
 
-When Project Inspector writes a report with **Questions for the salesperson**, `PI Agent Task Execution` (AnalyzeAgentTaskMessage on output messages) raises the external business event **ProjectClarificationRequested** (category *Project Inspector*) with ProjectId, ProjectNo, ProjectDescription, CustomerName, ReviewStatus, Questions (one per line) and ProjectUrl.
+Project Inspector's report is a draft until a user chooses **Continue** in the task pane. The job queue job **PI Report Monitor** (every minute, created in the company on the first review) reads the replies that were sent; for a report with **Questions for the salesperson** it raises the external business event **ProjectClarificationRequested** (category *Project Inspector*) with ProjectId, ProjectNo, ProjectDescription, CustomerName, ReviewStatus, Questions (one per line, at most 250 characters) and ProjectUrl. Each reply is read once (`PI Processed Report`). The event cannot be raised in the agent session: Business Central calls `AnalyzeAgentTaskMessage` only for a task's input messages, not for the agent's replies.
 
 The Power Automate flow:
 
@@ -76,7 +76,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 
 1. Make sure the sandbox has **Library Assert** and **Test Runner** installed.
 2. Publish **App**, then **Test**.
-3. Run 50150..50154 with the AL Test Runner extension or the **AL Test Tool** page (130451): *Get Test Codeunits* → *Run*.
+3. Run 50150..50155 with the AL Test Runner extension or the **AL Test Tool** page (130451): *Get Test Codeunits* → *Run*.
 
 | Codeunit | Covers |
 | --- | --- |
@@ -85,8 +85,9 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50152 PI Clarification Answer Tests | answer goes to the task of the project, empty answer, unknown project |
 | 50153 PI Clarification Event Tests | business event raised only when there are questions, project No. fallback |
 | 50154 PI Agent KPI Tests | the summary page shows which instructions version the agent has |
+| 50155 PI Report Monitor Tests | each sent reply raises the clarification event once and is logged |
 
-Not covered by unit tests, because they need a real agent: `PI Agent Task Dispatcher` (Tasks AL API) and `PI Agent Task Execution` (runs in the agent session). Check those by hand in the sandbox.
+Not covered by unit tests, because they need a real agent: `PI Agent Task Dispatcher` (Tasks AL API) and the part of `PI Report Monitor` that reads the agent's messages and creates the job queue entry. Check those by hand in the sandbox.
 
 Write tests first, with Given/When/Then comments and one behaviour per test. Change a test only when it is wrong about BC behaviour. Example: `Job.Validate(Status)` on an unsaved project always fails in the base application (`Status - OnValidate` calls `Modify`), so that case calls `PI Review Trigger`.OnAfterStatusValidated directly.
 
@@ -117,7 +118,7 @@ The other five results come from the Agent Designer version of the agent. The fi
 - **No trigger on project insert**: tasks and planning lines do not exist yet. Scribe Agent calls `submitForReview` when it is done (PCR-27).
 - **One task per project**, External ID = project No. Repeated triggers and answers add messages to that task. A task keeps the instructions it was created with, and a stopped or archived task never runs again, so the dispatcher only reuses a task that is not stopped or archived. To test new instructions, stop the old task and send the project again: it gets a new task.
 - **The task message only names the project** (`Review <No.>`); the agent finds the open points in the data (step 6 of the instructions).
-- **The business event is raised by code** (analysis of the output message), so the instructions stay unchanged.
+- **The business event is raised by code** (PI Report Monitor reads the sent replies), so the instructions stay unchanged and a person confirms the report before the salesperson is asked.
 - **Dispatcher interface + provider** exist only to make the triggers testable without an activated agent.
 - **Answers come in through a table + API page** (`clarificationAnswers`), not a bound action with parameters: simple for Power Automate, and it keeps a log.
 - **Questions go to the salesperson whenever the report has some**, also when it has findings (status ERRORS): only the salesperson can answer them, and the findings stay in the report for the project engineer.
@@ -135,7 +136,7 @@ Checked against the System Application source:
 ## Next steps
 
 1. **Agent end to end in the sandbox.** Set the agent up (see [Set up](#set-up)), run **Send to Project Inspector** on all six demo projects and compare with [Expected review results](#expected-review-results). Check that a second send adds a message to the same task, and that a change from Quote back to Planning starts a review.
-2. **Clarification loop in Teams.** The agent's report is an outgoing message in status Draft until a user chooses **Continue** in the task pane. Check whether the business event is raised when the draft is written or only after **Continue**, and decide which one the demo needs. With four FAB questions the `Questions` parameter is about 220 of its 250 characters. Build the Power Automate flow and check that the answer reaches the same task and the agent does not ask again about answered points. Done when the FAB-01-IMP question goes to Teams and the answer produces a new report.
+2. **Clarification loop in Teams.** The Power Automate flow (When a business event occurs → Teams adaptive card → Create record on `clarificationAnswers`) exists. Check that the card arrives within a minute after **Continue**, that the answer reaches the same task and that the agent does not ask again about answered points. With four FAB questions the `Questions` parameter is about 225 of its 250 characters. Build the Power Automate flow and check that the answer reaches the same task and the agent does not ask again about answered points. Done when the FAB-01-IMP question goes to Teams and the answer produces a new report.
 3. **Scribe Agent integration.** Add page 50102 `projectReviews` to the MCP configuration `SCRIBE-AGENT` (Read + Modify, bound actions allowed) and check that `submitForReview` shows up as a tool in Copilot Studio.
    - Scribe call order: customers → existing projects (PCR-03) → POST project → POST tasks → POST planning lines (no unit price) → PATCH `openPoints` → `submitForReview` once.
    - Scribe uses OCPF API pages 90842, 90846, 90854, 90910, 90912 and 90913. Test one planning line POST through page 90913 by hand first: on that page `jobTaskNo` is validated after `no` and `quantity`.

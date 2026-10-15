@@ -27,6 +27,7 @@ codeunit 50107 "PI Agent Task Dispatcher" implements "PI ITask Dispatcher"
         AgentTaskRecord: Record "Agent Task";
         PIAgentKPI: Record "PI Agent KPI";
         AgentTaskBuilder: Codeunit "Agent Task Builder";
+        ReportMonitor: Codeunit "PI Report Monitor";
         AgentTaskMessageBuilder: Codeunit "Agent Task Message Builder";
         AgentUserSecurityId: Guid;
     begin
@@ -46,6 +47,7 @@ codeunit 50107 "PI Agent Task Dispatcher" implements "PI ITask Dispatcher"
         end;
 
         PIAgentKPI.AddReviewRequested(AgentUserSecurityId);
+        ReportMonitor.EnsureJobQueueEntry(AgentUserSecurityId);
     end;
 
     procedure AddAnswer(ProjectNo: Code[20]; MessageText: Text)
