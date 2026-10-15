@@ -105,7 +105,7 @@ They were tuned on the six demo projects below, so after a change run all six ag
 | WWI-01-IMP | ERRORS | 19,500 | 10 | Possible duplicate WWI-02-IMP (PCR-03) | 50 hours contingent (PCR-23) |
 | WWI-02-IMP | ERRORS | 12,500 | 10 | Possible duplicate WWI-01-IMP (PCR-03) | Quote number for block 002000 (PCR-12); split 10 days in 002010 (PCR-23) |
 
-FAB-01-IMP carries the four open points Scribe Agent writes for it (users, travel, go-live, split of days) in the Open Points field. The RapidStart packages do not fill that field: after loading the demo data, set it with a PATCH on `projectReviews`. The split of days is asked once, by step 6c.
+FAB-01-IMP carries the four open points Scribe Agent writes for it (users, travel, go-live, split of days) in the Open Points field; the RapidStart package `SCRIBE-PRJ-HEADERS` fills it, so install the app before importing the demo data. The split of days is asked once, by step 6c.
 
 The other five results come from the Agent Designer version of the agent. The first run of the coded agent on FAB-01-IMP also asked for workshop dates on the travel task; step 6e now only looks at SERVICES lines. Step 6f (Open Points field) and step 8 (answers) are new, so run all six projects again before recording.
 
