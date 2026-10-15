@@ -2,7 +2,7 @@
   "id": "92c92ce8-1ee4-4cb0-a0ae-9969f4fb64a0",
   "name": "Project Inspector",
   "publisher": "Contoso Demo",
-  "version": "1.5.0.0",
+  "version": "1.7.0.0",
   "brief": "Business Central agent that reviews new projects in status Planning against the Contoso project creation rules.",
   "description": "Project Inspector reviews every new customer project in status Planning against the Contoso project creation rules (PCR) and reports findings and questions for the salesperson. Includes the review triggers (Submit for Review, status change to Planning, Project Card action), the projectReviews and clarificationAnswers APIs and the ProjectClarificationRequested business event. Demo for Directions EMEA 2026.",
   "privacyStatement": "",
