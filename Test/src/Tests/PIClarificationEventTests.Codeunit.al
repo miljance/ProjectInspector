@@ -39,6 +39,20 @@ codeunit 50153 "PI Clarification Event Tests"
     end;
 
     [Test]
+    procedure HandleAgentReportTellsWhetherTheEventWasRaised()
+    var
+        Job: Record Job;
+    begin
+        // [GIVEN] A project
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+
+        // [WHEN] The agent writes a report with questions, and then one without
+        // [THEN] Only the first one reports a raised event, so the agent timeline can say that the salesperson was asked
+        Assert.IsTrue(ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.OpenPointsReport(Job."No.")), 'A report with questions must raise the event.');
+        Assert.IsFalse(ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.OkReport(Job."No.")), 'A report without questions must not raise the event.');
+    end;
+
+    [Test]
     procedure ReportWithTwoQuestionsSendsThemOnePerLine()
     var
         Job: Record Job;
