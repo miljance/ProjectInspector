@@ -127,8 +127,13 @@ codeunit 50103 "PI Agent Setup"
     end;
 
     procedure UpdateInstructions(AgentUserSecurityId: Guid)
+    var
+        PIAgentKPI: Record "PI Agent KPI";
+        CurrentModuleInfo: ModuleInfo;
     begin
         Agent.SetInstructions(AgentUserSecurityId, GetInstructions());
+        NavApp.GetCurrentModuleInfo(CurrentModuleInfo);
+        PIAgentKPI.SetInstructionsVersion(AgentUserSecurityId, CopyStr(Format(CurrentModuleInfo.AppVersion()), 1, 30));
     end;
 
     procedure InitializeSetupRecord(var TempPIAgentSetup: Record "PI Agent Setup" temporary)

@@ -75,7 +75,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 
 1. Make sure the sandbox has **Library Assert** and **Test Runner** installed.
 2. Publish **App**, then **Test**.
-3. Run 50150..50153 with the AL Test Runner extension or the **AL Test Tool** page (130451): *Get Test Codeunits* → *Run*.
+3. Run 50150..50154 with the AL Test Runner extension or the **AL Test Tool** page (130451): *Get Test Codeunits* → *Run*.
 
 | Codeunit | Covers |
 | --- | --- |
@@ -83,6 +83,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50151 PI Report Parser Tests | questions, status and project No. from the report, CR LF |
 | 50152 PI Clarification Answer Tests | answer goes to the task of the project, empty answer, unknown project |
 | 50153 PI Clarification Event Tests | business event raised only when there are questions, project No. fallback |
+| 50154 PI Agent KPI Tests | the summary page shows which instructions version the agent has |
 
 Not covered by unit tests, because they need a real agent: `PI Agent Task Dispatcher` (Tasks AL API) and `PI Agent Task Execution` (runs in the agent session). Check those by hand in the sandbox.
 
@@ -90,7 +91,7 @@ Write tests first, with Given/When/Then comments and one behaviour per test. Cha
 
 ## Agent instructions
 
-The instructions are in `App/.resources/Instructions/InstructionsV1.txt`. To change them, edit the file, raise the version in `App/app.json` and publish: `PI Agent Upgrade` sets the new instructions on every Project Inspector agent.
+The instructions are in `App/.resources/Instructions/InstructionsV1.txt`. To change them, edit the file, raise the version in `App/app.json` and publish: `PI Agent Upgrade` sets the new instructions on every Project Inspector agent. The agent summary (from the agent card) shows **Instructions version** and when it was set; check it after publishing, because Business Central cannot show the instructions themselves.
 
 They were tuned on the six demo projects below, so after a change run all six again. `PI Report Parser` reads the report format of step 7: if the format changes, change the parser and the samples in `Test/src/Library/PITestLibrary.Codeunit.al` together.
 

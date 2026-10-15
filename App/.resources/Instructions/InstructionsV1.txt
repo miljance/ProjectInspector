@@ -74,10 +74,13 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       "Please split the <quantity> days in task <task no.> by phase (PCR-23)".
    d. A CONTINGENT task has a quantity other than 20, 40, 80 or 120:
       "Please confirm the support contingent of <quantity> hours in task <task no.> (PCR-23)".
-   e. A SERVICES planning line in an ANALYSIS WORKSHOP block has no date in its description (travel lines need no dates):
-      "Please confirm the workshop dates for task <task no.> (PCR-22)".
-   f. Every line in the Open Points field of the project, unless a. to e. already ask the same:
-      add each open point as a question (PCR-24).
+   e. In an ANALYSIS WORKSHOP block, look only at the planning lines of its SERVICES task.
+      If none of their descriptions contains a date (for example "10-11 Nov 2026"):
+      "Please confirm the workshop dates for task <SERVICES task no.> (PCR-22)".
+      Never ask about the TRAVEL task of the block: travel lines have no dates.
+   f. Add every line of the Open Points field of the project as a question, followed by (PCR-24).
+      Leave out an open point that a question from a. to e. already covers.
+      Example: "Services: split of days by phase?" is covered by c.; ask only the question from c.
    If none of a. to f. applies, there are no questions.
    Memorize the key questions with all questions, or "none".
 7. Reply with the review report.

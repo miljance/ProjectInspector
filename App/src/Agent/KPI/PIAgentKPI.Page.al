@@ -24,6 +24,17 @@ page 50101 "PI Agent KPI"
                 {
                 }
             }
+            group(Instructions)
+            {
+                Caption = 'Instructions';
+
+                field(InstructionsVersion; Rec."Instructions Version")
+                {
+                }
+                field(InstructionsUpdatedAt; Rec."Instructions Updated At")
+                {
+                }
+            }
         }
     }
 

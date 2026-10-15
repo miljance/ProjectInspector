@@ -29,6 +29,18 @@ table 50101 "PI Agent KPI"
             Caption = 'Answers received';
             ToolTip = 'Specifies how many answers from salespeople were passed to Project Inspector.';
         }
+        field(20; "Instructions Version"; Text[30])
+        {
+            Caption = 'Instructions version';
+            ToolTip = 'Specifies the app version whose instructions were last set on the agent. New tasks use these instructions; a task keeps the instructions it was created with.';
+            Editable = false;
+        }
+        field(21; "Instructions Updated At"; DateTime)
+        {
+            Caption = 'Instructions updated at';
+            ToolTip = 'Specifies when the instructions were last set on the agent.';
+            Editable = false;
+        }
     }
 
     keys
@@ -50,6 +62,14 @@ table 50101 "PI Agent KPI"
     begin
         GetOrCreate(AgentUserSecurityId);
         Rec."Answers Received" += 1;
+        Rec.Modify();
+    end;
+
+    procedure SetInstructionsVersion(AgentUserSecurityId: Guid; InstructionsVersion: Text[30])
+    begin
+        GetOrCreate(AgentUserSecurityId);
+        Rec."Instructions Version" := InstructionsVersion;
+        Rec."Instructions Updated At" := CurrentDateTime();
         Rec.Modify();
     end;
 
