@@ -1,0 +1,15 @@
+{
+  "folders": [
+    { "name": "Project Inspector (App)", "path": "App" },
+    { "name": "Project Inspector Tests", "path": "Test" },
+    { "name": "Root", "path": "." }
+  ],
+  "settings": {
+    "al.enableCodeAnalysis": true,
+    "al.codeAnalyzers": ["${CodeCop}", "${UICop}", "${PerTenantExtensionCop}"],
+    "files.exclude": {
+      "**/.alcache": true,
+      "**/.snapshots": true
+    }
+  }
+}

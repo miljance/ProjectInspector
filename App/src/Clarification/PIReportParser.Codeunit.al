@@ -1,0 +1,129 @@
+namespace Contoso.ProjectInspector;
+
+/// <summary>
+/// Reads the review report of Project Inspector (format defined in step 7 of the instructions):
+///   Project &lt;No.&gt; review: &lt;status&gt;
+///   Blocks: ... | Total: ... | Days: ...
+///   Findings:
+///   - &lt;finding&gt;
+///   Questions for the salesperson:
+///   - &lt;question&gt;
+///   &lt;closing line&gt;
+/// </summary>
+codeunit 50109 "PI Report Parser"
+{
+    Access = Internal;
+
+    var
+        ProjectPrefixTok: Label 'Project ', Locked = true;
+        ReviewSeparatorTok: Label ' review:', Locked = true;
+        QuestionsHeaderTok: Label 'Questions for the salesperson:', Locked = true;
+        BulletTok: Label '- ', Locked = true;
+
+    procedure GetQuestions(ReportText: Text; var Questions: List of [Text])
+    var
+        Lines: List of [Text];
+        Line: Text;
+        InQuestions: Boolean;
+    begin
+        Clear(Questions);
+        GetLines(ReportText, Lines);
+        foreach Line in Lines do begin
+            if InQuestions then begin
+                if not Line.StartsWith(BulletTok) then
+                    exit;
+                Questions.Add(Line.Substring(StrLen(BulletTok) + 1).Trim());
+            end;
+            if Line = QuestionsHeaderTok then
+                InQuestions := true;
+        end;
+    end;
+
+    procedure HasQuestions(ReportText: Text): Boolean
+    var
+        Questions: List of [Text];
+    begin
+        GetQuestions(ReportText, Questions);
+        exit(Questions.Count() > 0);
+    end;
+
+    /// <summary>
+    /// Returns the questions as one text, one question per line.
+    /// </summary>
+    procedure GetQuestionsText(ReportText: Text): Text
+    var
+        Questions: List of [Text];
+        Question: Text;
+        Result: TextBuilder;
+    begin
+        GetQuestions(ReportText, Questions);
+        foreach Question in Questions do begin
+            if Result.Length() > 0 then
+                Result.Append(LineFeed());
+            Result.Append(Question);
+        end;
+        exit(Result.ToText());
+    end;
+
+    procedure GetProjectNo(ReportText: Text): Code[20]
+    var
+        FirstLine: Text;
+        SeparatorPos: Integer;
+    begin
+        FirstLine := GetFirstLine(ReportText);
+        if not FirstLine.StartsWith(ProjectPrefixTok) then
+            exit('');
+        SeparatorPos := FirstLine.IndexOf(ReviewSeparatorTok);
+        if SeparatorPos = 0 then
+            exit('');
+        exit(CopyStr(FirstLine.Substring(StrLen(ProjectPrefixTok) + 1, SeparatorPos - StrLen(ProjectPrefixTok) - 1).Trim(), 1, 20));
+    end;
+
+    procedure GetStatus(ReportText: Text): Text
+    var
+        FirstLine: Text;
+        SeparatorPos: Integer;
+    begin
+        FirstLine := GetFirstLine(ReportText);
+        SeparatorPos := FirstLine.IndexOf(ReviewSeparatorTok);
+        if SeparatorPos = 0 then
+            exit('');
+        exit(FirstLine.Substring(SeparatorPos + StrLen(ReviewSeparatorTok)).Trim());
+    end;
+
+    local procedure GetFirstLine(ReportText: Text): Text
+    var
+        Lines: List of [Text];
+    begin
+        GetLines(ReportText, Lines);
+        if Lines.Count() = 0 then
+            exit('');
+        exit(Lines.Get(1));
+    end;
+
+    /// <summary>
+    /// Splits the report into trimmed, non-empty lines. Works with LF and CR LF line breaks.
+    /// </summary>
+    local procedure GetLines(ReportText: Text; var Lines: List of [Text])
+    var
+        RawLine: Text;
+        Line: Text;
+        CarriageReturn: Text[1];
+    begin
+        Clear(Lines);
+        CarriageReturn[1] := 13;
+        foreach RawLine in ReportText.Split(LineFeed()) do begin
+            Line := RawLine.Replace(CarriageReturn, '').Trim();
+            if Line <> '' then
+                Lines.Add(Line);
+        end;
+    end;
+
+    local procedure LineFeed(): Text[1]
+    var
+        LF: Text[1];
+    begin
+        LF[1] := 10;
+        exit(LF);
+    end;
+}

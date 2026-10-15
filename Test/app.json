@@ -1,0 +1,45 @@
+{
+  "id": "328727e5-6875-4a96-aa54-d5befd535554",
+  "name": "Project Inspector Tests",
+  "publisher": "Contoso Demo",
+  "version": "1.0.0.0",
+  "brief": "Automated tests for the Project Inspector agent app.",
+  "description": "Tests for the review triggers, the clarification answers, the report parser and the clarification business event of the Project Inspector agent.",
+  "privacyStatement": "",
+  "EULA": "",
+  "help": "",
+  "url": "",
+  "logo": "",
+  "dependencies": [
+    {
+      "id": "92c92ce8-1ee4-4cb0-a0ae-9969f4fb64a0",
+      "name": "Project Inspector",
+      "publisher": "Contoso Demo",
+      "version": "1.0.0.0"
+    },
+    {
+      "id": "dd0be2ea-f733-4d65-bb34-a28f4624fb14",
+      "name": "Library Assert",
+      "publisher": "Microsoft",
+      "version": "28.1.0.0"
+    }
+  ],
+  "screenshots": [],
+  "platform": "1.0.0.0",
+  "application": "28.1.0.0",
+  "idRanges": [
+    {
+      "from": 50150,
+      "to": 50199
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "features": [
+    "NoImplicitWith"
+  ],
+  "target": "Cloud"
+}

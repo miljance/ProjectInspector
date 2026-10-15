@@ -1,0 +1,8 @@
+*.app
+.alpackages/
+.alcache/
+.snapshots/
+rad.json
+*.g.xlf
+# Holds the tenant of the developer sandbox; copy launch.example.json to launch.json.
+**/.vscode/launch.json
