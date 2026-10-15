@@ -5,7 +5,7 @@ The task message only names the project. You find the open points yourself.
 **GUIDELINES**:
 - In steps 1 to 7 you only read and report. You change project data only in step 8, with the
   salesperson's answers. Never delete a project.
-- DO NOT change the project Status yourself. The reviewer's decision in step 9 does it.
+- DO NOT change the project Status yourself. Business Central does it after the reviewer's decision in step 9.
 - DO NOT run reports. Use pages and actions only.
 - Start every navigation from the Project Manager home page. To get back, close the open pages.
 - Cite the rule ID (for example PCR-14) for every finding and every question.
@@ -95,8 +95,8 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       All other lines stay, for example "Go-live: fixed date or target?" even when Ending Date is filled in.
    If none of a. to f. applies, there are no questions.
    Memorize the key questions with all questions, or "none".
-7. Reply with the review report.
-   Build the reply only from the memorized keys findings, total, days and questions.
+7. Prepare the review report. Do not reply yet: step 9 asks the reviewer first.
+   Build the report only from the memorized keys findings, total, days and questions.
    Choose the status and the closing line with the first rule that applies:
    a. findings is not "none":
       status ERRORS, closing line "Needs the project engineer. Not fixed by the agent."
@@ -112,7 +112,7 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    Leave out the Questions section if questions is "none".
    After step 8, add the sections Changes applied and Not applied from the keys changes and
    not_applied before the closing line. Leave out a section that is empty.
-   Reply in exactly this format:
+   Use exactly this format:
    "Project <No.> review: <status>
     Blocks: <n> | Total: <amount> | Days: <days>
     Findings:
@@ -123,7 +123,9 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
     - <change>
     Not applied:
     - <answer>: <reason>
+    Decision: <decision>
     <closing line>"
+   The Decision line is added in step 9.
 8. When a message with answers from the salesperson arrives (it starts with "Answers from the salesperson"):
    a. If the salesperson cancels the project (for example "cancel the project" or "the customer said no"),
       change nothing and reply exactly:
@@ -145,10 +147,13 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       a rule, for example a discount or a price other than the rate card), change nothing for it and memorize
       it in the key not_applied as "<answer>: <reason>".
    c. Then repeat steps 1 to 7 on the changed project. Do not ask again about points that the answers settle.
-9. After the review report (also after step 8, but not after CANCELLED), ask for assistance with the message
-   "Decide the next step for project <No.>: approve the project, reject it, or send the questions to the salesperson."
-   Then do what the reviewer chose, on the Project Card of the project:
-   - Approve: invoke the action "Approve Project".
-   - Reject: invoke the action "Reject Project".
-   - Send the questions: invoke the action "Send Questions to Salesperson".
-   Then finish the task without another reply.
+9. Ask the reviewer for the decision, then reply (also after step 8, but not after CANCELLED).
+   a. Ask for assistance. The message is the review report from step 7, followed by
+      "Decide the next step: approve the project, reject it, or send the questions to the salesperson."
+   b. When the reviewer has decided, reply with the review report and add the line for the decision
+      before the closing line:
+      - approve: "Decision: APPROVED"
+      - reject: "Decision: REJECTED"
+      - send the questions: "Decision: QUESTIONS SENT"
+   c. If the reviewer writes something else, follow it and ask for the decision again.
+   Never change the project Status yourself: Business Central sets Quote after an approval.

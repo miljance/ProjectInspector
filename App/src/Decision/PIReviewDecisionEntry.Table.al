@@ -3,8 +3,8 @@ namespace Contoso.ProjectInspector;
 using Microsoft.Projects.Project.Job;
 
 /// <summary>
-/// The reviewer's decisions after Project Inspector reports. The Project Card actions write them (also when the agent
-/// clicks them on the reviewer's choice); PI Report Monitor processes each one once: status change and business event.
+/// Log of the reviewer's decisions on Project Inspector reports. The reviewer chooses in the task pane, the agent writes
+/// the decision into its report, and PI Report Monitor carries it out once: status change and business event.
 /// </summary>
 table 50104 "PI Review Decision Entry"
 {
@@ -42,7 +42,7 @@ table 50104 "PI Review Decision Entry"
         field(5; "Decided By"; Code[50])
         {
             Caption = 'Decided By';
-            ToolTip = 'Specifies the user who chose the action; the agent when it acted on the reviewer''s choice.';
+            ToolTip = 'Specifies the user whose session carried out the decision (the report monitor job).';
             DataClassification = EndUserIdentifiableInformation;
         }
         field(6; Processed; Boolean)

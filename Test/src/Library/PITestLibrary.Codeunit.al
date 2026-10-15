@@ -119,6 +119,18 @@ codeunit 50162 "PI Test Library"
             'Waiting for answers from the salesperson.');
     end;
 
+    /// <summary>
+    /// Adds the reviewer's decision to a report, as the agent writes it before the closing line,
+    /// for example WithDecision(ErrorsReport('TAI-01-IMP'), 'REJECTED').
+    /// </summary>
+    procedure WithDecision(ReportText: Text; Decision: Text): Text
+    var
+        LastBreak: Integer;
+    begin
+        LastBreak := ReportText.LastIndexOf(LF());
+        exit(ReportText.Substring(1, LastBreak) + 'Decision: ' + Decision + LF() + ReportText.Substring(LastBreak + 1));
+    end;
+
     procedure CancelledReport(ProjectNo: Code[20]): Text
     begin
         exit(

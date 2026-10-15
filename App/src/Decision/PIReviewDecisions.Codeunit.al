@@ -3,7 +3,8 @@ namespace Contoso.ProjectInspector;
 using Microsoft.Projects.Project.Job;
 
 /// <summary>
-/// Records the reviewer's decision on a Project Inspector report and carries it out:
+/// Logs the reviewer's decision on a Project Inspector report and carries it out (the agent writes the decision
+/// into its report, PI Report Monitor reads it):
 /// Approve sets the project to Quote and raises ProjectReviewApproved, Reject raises ProjectRejected with the findings,
 /// Send Questions raises ProjectClarificationRequested with the questions of the report.
 /// </summary>
@@ -19,7 +20,18 @@ codeunit 50114 "PI Review Decisions"
         NoQuestionsResultTxt: Label 'The latest report has no questions; nothing was sent.';
         ProjectNotFoundResultTxt: Label 'Project %1 does not exist.', Comment = '%1 = project No.';
 
-    procedure Register(var Job: Record Job; Decision: Enum "PI Review Decision")
+    /// <summary>
+    /// Logs the decision and carries it out with the report it was made on.
+    /// </summary>
+    procedure CarryOut(var Job: Record Job; Decision: Enum "PI Review Decision"; ReportText: Text)
+    var
+        PIReviewDecisionEntry: Record "PI Review Decision Entry";
+    begin
+        PIReviewDecisionEntry.Get(Register(Job, Decision));
+        ProcessDecision(PIReviewDecisionEntry, ReportText);
+    end;
+
+    procedure Register(var Job: Record Job; Decision: Enum "PI Review Decision"): Integer
     var
         PIReviewDecisionEntry: Record "PI Review Decision Entry";
     begin
@@ -29,6 +41,7 @@ codeunit 50114 "PI Review Decisions"
         PIReviewDecisionEntry."Decided At" := CurrentDateTime();
         PIReviewDecisionEntry."Decided By" := CopyStr(UserId(), 1, MaxStrLen(PIReviewDecisionEntry."Decided By"));
         PIReviewDecisionEntry.Insert(true);
+        exit(PIReviewDecisionEntry."Entry No.");
     end;
 
     /// <summary>

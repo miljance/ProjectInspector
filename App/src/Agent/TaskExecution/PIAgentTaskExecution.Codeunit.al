@@ -27,13 +27,13 @@ codeunit 50104 "PI Agent Task Execution" implements IAgentTaskExecution
         CheckProjectInstructionsLbl: Label 'Reply with the correct project number, or stop the task if the project is no longer in status Planning.', Locked = true;
         ApproveSummaryLbl: Label 'Approve project (status Quote)';
         ApproveDescriptionLbl: Label 'The reviewer approves the project after the review, also when points are open.', Locked = true;
-        ApproveInstructionsLbl: Label 'The reviewer approves the project. On the Project Card of the project invoke the action "Approve Project". Then finish the task without another reply.', Locked = true;
+        ApproveInstructionsLbl: Label 'The reviewer approves the project. Reply with the review report and add the line "Decision: APPROVED" before the closing line.', Locked = true;
         RejectSummaryLbl: Label 'Reject project and notify';
         RejectDescriptionLbl: Label 'The reviewer rejects the project; the team is notified with the findings.', Locked = true;
-        RejectInstructionsLbl: Label 'The reviewer rejects the project. On the Project Card of the project invoke the action "Reject Project". Then finish the task without another reply.', Locked = true;
+        RejectInstructionsLbl: Label 'The reviewer rejects the project. Reply with the review report and add the line "Decision: REJECTED" before the closing line.', Locked = true;
         QuestionsSummaryLbl: Label 'Send questions to the salesperson';
         QuestionsDescriptionLbl: Label 'The reviewer sends the questions of the report to the salesperson in Teams.', Locked = true;
-        QuestionsInstructionsLbl: Label 'The reviewer sends the questions to the salesperson. On the Project Card of the project invoke the action "Send Questions to Salesperson". Then finish the task without another reply.', Locked = true;
+        QuestionsInstructionsLbl: Label 'The reviewer sends the questions to the salesperson. Reply with the review report and add the line "Decision: QUESTIONS SENT" before the closing line.', Locked = true;
     begin
         if AgentTaskUserInterventionRequestDetails.Type <> AgentTaskUserInterventionRequestDetails.Type::Assistance then
             exit;

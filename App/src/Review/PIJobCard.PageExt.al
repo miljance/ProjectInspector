@@ -35,50 +35,6 @@ pageextension 50100 "PI Job Card" extends "Job Card"
                     Message(SentMsg, Rec."No.");
                 end;
             }
-            // The reviewer's decisions after a Project Inspector report. The agent clicks them on the reviewer's choice,
-            // so they show no message; PI Report Monitor carries them out within a minute.
-            action(PIApproveProject)
-            {
-                ApplicationArea = Jobs;
-                Caption = 'Approve Project';
-                ToolTip = 'Approve the project after the Project Inspector review. It is set to status Quote and the team is notified.';
-                Image = Approve;
-
-                trigger OnAction()
-                var
-                    ReviewDecisions: Codeunit "PI Review Decisions";
-                begin
-                    ReviewDecisions.Register(Rec, Enum::"PI Review Decision"::Approve);
-                end;
-            }
-            action(PIRejectProject)
-            {
-                ApplicationArea = Jobs;
-                Caption = 'Reject Project';
-                ToolTip = 'Reject the project after the Project Inspector review. The team is notified with the findings of the report.';
-                Image = Reject;
-
-                trigger OnAction()
-                var
-                    ReviewDecisions: Codeunit "PI Review Decisions";
-                begin
-                    ReviewDecisions.Register(Rec, Enum::"PI Review Decision"::Reject);
-                end;
-            }
-            action(PISendQuestions)
-            {
-                ApplicationArea = Jobs;
-                Caption = 'Send Questions to Salesperson';
-                ToolTip = 'Send the questions of the latest Project Inspector report to the salesperson in Teams.';
-                Image = SendTo;
-
-                trigger OnAction()
-                var
-                    ReviewDecisions: Codeunit "PI Review Decisions";
-                begin
-                    ReviewDecisions.Register(Rec, Enum::"PI Review Decision"::"Send Questions");
-                end;
-            }
         }
     }
 

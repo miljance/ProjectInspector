@@ -22,11 +22,27 @@ codeunit 50109 "PI Report Parser"
         QuestionsHeaderTok: Label 'Questions for the salesperson:', Locked = true;
         FindingsHeaderTok: Label 'Findings:', Locked = true;
         NotAppliedHeaderTok: Label 'Not applied:', Locked = true;
+        DecisionPrefixTok: Label 'Decision:', Locked = true;
         BulletTok: Label '- ', Locked = true;
 
     procedure GetQuestions(ReportText: Text; var Questions: List of [Text])
     begin
         GetSection(ReportText, QuestionsHeaderTok, Questions);
+    end;
+
+    /// <summary>
+    /// Returns the reviewer's decision the agent wrote into the report ("Decision: APPROVED"), in upper case, or ''.
+    /// </summary>
+    procedure GetDecision(ReportText: Text): Text
+    var
+        Lines: List of [Text];
+        Line: Text;
+    begin
+        GetLines(ReportText, Lines);
+        foreach Line in Lines do
+            if Line.StartsWith(DecisionPrefixTok) then
+                exit(Line.Substring(StrLen(DecisionPrefixTok) + 1).Trim().ToUpper());
+        exit('');
     end;
 
     /// <summary>

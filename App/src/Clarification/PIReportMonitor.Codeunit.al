@@ -4,8 +4,8 @@ using System.Agents;
 using System.Threading;
 
 /// <summary>
-/// Job queue job: reads the replies Project Inspector sent and raises the events that need no decision
-/// (answers not applied, project cancelled), and carries out the reviewer's decisions (Approve, Reject, Send Questions).
+/// Job queue job: reads the replies Project Inspector sent, raises the events for answers not applied and cancelled
+/// projects, and carries out the reviewer's decision the agent wrote into the reply (Approve, Reject, Send Questions).
 /// Business Central calls AnalyzeAgentTaskMessage only for the input messages of a task, not for the agent's replies
 /// (checked on BC 29), so the events cannot be raised in the agent session. A reply counts once it is Sent or Reviewed,
 /// that is after a user chose Continue on the draft.
@@ -21,30 +21,6 @@ codeunit 50113 "PI Report Monitor"
     trigger OnRun()
     begin
         CheckSentReports();
-        ProcessPendingDecisions();
-    end;
-
-    /// <summary>
-    /// Carries out the reviewer's decisions (Approve, Reject, Send Questions) with the latest report of each project.
-    /// </summary>
-    procedure ProcessPendingDecisions()
-    var
-        PIReviewDecisionEntry: Record "PI Review Decision Entry";
-        ReviewDecisions: Codeunit "PI Review Decisions";
-        TaskId: BigInteger;
-        TaskStatus: Text;
-        ReportStatus: Text;
-        ReportCreatedAt: DateTime;
-        ReportText: Text;
-    begin
-        PIReviewDecisionEntry.SetCurrentKey(Processed, "Entry No.");
-        PIReviewDecisionEntry.SetRange(Processed, false);
-        if not PIReviewDecisionEntry.FindSet(true) then
-            exit;
-        repeat
-            GetLatestReport(PIReviewDecisionEntry."Project No.", TaskId, TaskStatus, ReportStatus, ReportCreatedAt, ReportText);
-            ReviewDecisions.ProcessDecision(PIReviewDecisionEntry, ReportText);
-        until PIReviewDecisionEntry.Next() = 0;
     end;
 
     /// <summary>

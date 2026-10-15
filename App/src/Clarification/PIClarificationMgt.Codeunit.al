@@ -14,18 +14,23 @@ codeunit 50110 "PI Clarification Mgt."
         ReportParser: Codeunit "PI Report Parser";
         BusinessEvents: Codeunit "PI Business Events";
         CancelledStatusTok: Label 'CANCELLED', Locked = true;
+        ApprovedDecisionTok: Label 'APPROVED', Locked = true;
+        RejectedDecisionTok: Label 'REJECTED', Locked = true;
+        QuestionsSentDecisionTok: Label 'QUESTIONS SENT', Locked = true;
 
     /// <summary>
-    /// Called for every report the agent sent: raises the business events that need no decision of the reviewer,
-    /// ProjectChangesNotApplied and ProjectCancelled. Questions go out only on the reviewer's decision (SendQuestions).
-    /// Returns true when an event was raised.
+    /// Called for every report the agent sent: raises ProjectChangesNotApplied and ProjectCancelled, and carries out the
+    /// reviewer's decision the agent wrote into the report ("Decision: APPROVED / REJECTED / QUESTIONS SENT").
+    /// Questions go out only on that decision. Returns true when an event was raised.
     /// </summary>
     /// <param name="ExternalId">External ID of the agent task, which is the project No. Empty for tasks started by hand.</param>
     /// <param name="ReportText">The text of the agent message.</param>
-    procedure HandleAgentReport(ExternalId: Text; ReportText: Text): Boolean
+    procedure HandleAgentReport(ExternalId: Text; ReportText: Text) Raised: Boolean
     var
         Job: Record Job;
+        ReviewDecisions: Codeunit "PI Review Decisions";
         NotApplied: Text;
+        Decision: Enum "PI Review Decision";
     begin
         if not FindProject(ExternalId, ReportText, Job) then
             exit(false);
@@ -36,9 +41,29 @@ codeunit 50110 "PI Clarification Mgt."
         end;
 
         NotApplied := ReportParser.GetNotAppliedText(ReportText);
-        if NotApplied = '' then
-            exit(false);
-        BusinessEvents.RaiseChangesNotApplied(Job, NotApplied);
+        if NotApplied <> '' then begin
+            BusinessEvents.RaiseChangesNotApplied(Job, NotApplied);
+            Raised := true;
+        end;
+
+        if TryGetDecision(ReportParser.GetDecision(ReportText), Decision) then begin
+            ReviewDecisions.CarryOut(Job, Decision, ReportText);
+            Raised := true;
+        end;
+    end;
+
+    local procedure TryGetDecision(DecisionText: Text; var Decision: Enum "PI Review Decision"): Boolean
+    begin
+        case DecisionText of
+            ApprovedDecisionTok:
+                Decision := Decision::Approve;
+            RejectedDecisionTok:
+                Decision := Decision::Reject;
+            QuestionsSentDecisionTok:
+                Decision := Decision::"Send Questions";
+            else
+                exit(false);
+        end;
         exit(true);
     end;
 

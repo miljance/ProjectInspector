@@ -5,9 +5,9 @@ using Microsoft.Projects.Project.Job;
 using System.TestLibraries.Utilities;
 
 /// <summary>
-/// Events that follow from a sent report without a decision of the reviewer: answers the agent could not apply go to
-/// the salesperson (ProjectChangesNotApplied), a cancelled project is announced (ProjectCancelled). Questions wait for
-/// the reviewer's decision.
+/// Events that follow from a report the agent sent: answers it could not apply go to the salesperson
+/// (ProjectChangesNotApplied), a cancelled project is announced (ProjectCancelled), and the reviewer's decision the
+/// agent wrote into the report ("Decision: APPROVED / REJECTED / QUESTIONS SENT") is carried out.
 /// </summary>
 codeunit 50156 "PI Report Event Tests"
 {
@@ -60,6 +60,77 @@ codeunit 50156 "PI Report Event Tests"
         Assert.AreEqual(1, ClarificationEventSpy.GetEventCount('ProjectCancelled'), 'One ProjectCancelled event expected.');
         Assert.AreEqual('Stopped: the salesperson cancelled the project.', ClarificationEventSpy.GetLastDetails('ProjectCancelled'), 'Wrong reason.');
         Assert.AreEqual(1, ClarificationEventSpy.GetTotalEventCount(), 'No other event expected.');
+    end;
+
+    [Test]
+    procedure ApprovedDecisionSetsQuoteAndNotifies()
+    var
+        Job: Record Job;
+        PIReviewDecisionEntry: Record "PI Review Decision Entry";
+        ClarificationEventSpy: Codeunit "PI Clarification Event Spy";
+    begin
+        // [GIVEN] An OPEN POINTS report that the reviewer approved anyway
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        BindSubscription(ClarificationEventSpy);
+
+        // [WHEN] The sent report is handled
+        ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.WithDecision(TestLibrary.OpenPointsReport(Job."No."), 'APPROVED'));
+
+        // [THEN] Quote, one approval event, no questions, and the decision is logged
+        UnbindSubscription(ClarificationEventSpy);
+        Job.Get(Job."No.");
+        Assert.AreEqual(Job.Status::Quote, Job.Status, 'Approve must set the project to Quote.');
+        Assert.AreEqual(1, ClarificationEventSpy.GetEventCount('ProjectReviewApproved'), 'One approval event expected.');
+        Assert.AreEqual(0, ClarificationEventSpy.GetEventCount('ProjectClarificationRequested'), 'No questions on Approve.');
+        PIReviewDecisionEntry.SetRange("Project No.", Job."No.");
+        PIReviewDecisionEntry.FindFirst();
+        Assert.AreEqual(Enum::"PI Review Decision"::Approve, PIReviewDecisionEntry.Decision, 'The decision must be logged.');
+        Assert.IsTrue(PIReviewDecisionEntry.Processed, 'The logged decision must be processed.');
+    end;
+
+    [Test]
+    procedure RejectedDecisionNotifiesWithTheFindings()
+    var
+        Job: Record Job;
+        ClarificationEventSpy: Codeunit "PI Clarification Event Spy";
+    begin
+        // [GIVEN] An ERRORS report that the reviewer rejected
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        BindSubscription(ClarificationEventSpy);
+
+        // [WHEN] The sent report is handled
+        ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.WithDecision(TestLibrary.ErrorsReport(Job."No."), 'REJECTED'));
+
+        // [THEN] One rejection event with the findings; the questions of the report are not sent
+        UnbindSubscription(ClarificationEventSpy);
+        Assert.AreEqual(1, ClarificationEventSpy.GetEventCount('ProjectRejected'), 'One rejection event expected.');
+        Assert.AreEqual(
+            'Unit Price 1,100 instead of 1,250 for R-CONSULT in task 002010 (PCR-14)' + TestLibrary.LF() +
+            'Discount of 375 on R-CONSULT in task 002010 (PCR-16)',
+            ClarificationEventSpy.GetLastDetails('ProjectRejected'), 'Wrong findings in the event.');
+        Assert.AreEqual(0, ClarificationEventSpy.GetEventCount('ProjectClarificationRequested'), 'No questions on Reject.');
+    end;
+
+    [Test]
+    procedure QuestionsSentDecisionSendsTheQuestions()
+    var
+        Job: Record Job;
+        ClarificationEventSpy: Codeunit "PI Clarification Event Spy";
+    begin
+        // [GIVEN] A report with two questions, and the reviewer chose to send them
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        BindSubscription(ClarificationEventSpy);
+
+        // [WHEN] The sent report is handled
+        ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.WithDecision(TestLibrary.TwoQuestionsReport(Job."No."), 'QUESTIONS SENT'));
+
+        // [THEN] The questions go to the salesperson, the decision line is not one of them
+        UnbindSubscription(ClarificationEventSpy);
+        Assert.AreEqual(1, ClarificationEventSpy.GetEventCount('ProjectClarificationRequested'), 'One clarification event expected.');
+        Assert.AreEqual(
+            'Please confirm the planned start and end date (PCR-20)' + TestLibrary.LF() +
+            'Please confirm the support contingent of 60 hours in task 002010 (PCR-23)',
+            ClarificationEventSpy.GetLastDetails('ProjectClarificationRequested'), 'Wrong questions in the event.');
     end;
 
     [Test]
