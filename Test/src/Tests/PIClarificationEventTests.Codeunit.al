@@ -5,8 +5,8 @@ using Microsoft.Projects.Project.Job;
 using System.TestLibraries.Utilities;
 
 /// <summary>
-/// When the review report has questions for the salesperson, Business Central raises the
-/// ProjectClarificationRequested business event. Power Automate picks it up and asks in Teams.
+/// When the reviewer chooses Send Questions, Business Central raises the ProjectClarificationRequested business
+/// event with the questions of the report. Power Automate picks it up and asks in Teams.
 /// </summary>
 codeunit 50153 "PI Clarification Event Tests"
 {
@@ -29,7 +29,7 @@ codeunit 50153 "PI Clarification Event Tests"
         BindSubscription(ClarificationEventSpy);
 
         // [WHEN] The agent writes the report for the review task of the project
-        ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.OpenPointsReport(Job."No."));
+        ClarificationMgt.SendQuestions(Job."No.", TestLibrary.OpenPointsReport(Job."No."));
 
         // [THEN] One clarification event is raised with the question
         UnbindSubscription(ClarificationEventSpy);
@@ -39,7 +39,7 @@ codeunit 50153 "PI Clarification Event Tests"
     end;
 
     [Test]
-    procedure HandleAgentReportTellsWhetherTheEventWasRaised()
+    procedure SendQuestionsTellsWhetherTheEventWasRaised()
     var
         Job: Record Job;
     begin
@@ -48,8 +48,8 @@ codeunit 50153 "PI Clarification Event Tests"
 
         // [WHEN] The agent writes a report with questions, and then one without
         // [THEN] Only the first one reports a raised event, so the agent timeline can say that the salesperson was asked
-        Assert.IsTrue(ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.OpenPointsReport(Job."No.")), 'A report with questions must raise the event.');
-        Assert.IsFalse(ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.OkReport(Job."No.")), 'A report without questions must not raise the event.');
+        Assert.IsTrue(ClarificationMgt.SendQuestions(Job."No.", TestLibrary.OpenPointsReport(Job."No.")), 'A report with questions must raise the event.');
+        Assert.IsFalse(ClarificationMgt.SendQuestions(Job."No.", TestLibrary.OkReport(Job."No.")), 'A report without questions must not raise the event.');
     end;
 
     [Test]
@@ -63,7 +63,7 @@ codeunit 50153 "PI Clarification Event Tests"
         BindSubscription(ClarificationEventSpy);
 
         // [WHEN] The agent writes the report
-        ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.TwoQuestionsReport(Job."No."));
+        ClarificationMgt.SendQuestions(Job."No.", TestLibrary.TwoQuestionsReport(Job."No."));
 
         // [THEN] The event carries both questions, one per line
         UnbindSubscription(ClarificationEventSpy);
@@ -84,7 +84,7 @@ codeunit 50153 "PI Clarification Event Tests"
         BindSubscription(ClarificationEventSpy);
 
         // [WHEN] The agent writes the report
-        ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.OkReport(Job."No."));
+        ClarificationMgt.SendQuestions(Job."No.", TestLibrary.OkReport(Job."No."));
 
         // [THEN] No clarification is requested
         UnbindSubscription(ClarificationEventSpy);
@@ -102,7 +102,7 @@ codeunit 50153 "PI Clarification Event Tests"
         BindSubscription(ClarificationEventSpy);
 
         // [WHEN] The agent writes the report
-        ClarificationMgt.HandleAgentReport('', TestLibrary.ErrorsReport(Job."No."));
+        ClarificationMgt.SendQuestions('', TestLibrary.ErrorsReport(Job."No."));
 
         // [THEN] The project No. comes from the first line of the report
         UnbindSubscription(ClarificationEventSpy);

@@ -100,6 +100,32 @@ codeunit 50162 "PI Test Library"
             'Needs the project engineer. Not fixed by the agent.');
     end;
 
+    /// <summary>
+    /// A report after the agent applied the salesperson's answers; one answer could not be applied.
+    /// </summary>
+    procedure AnswersAppliedReport(ProjectNo: Code[20]): Text
+    begin
+        exit(
+            'Project ' + ProjectNo + ' review: OPEN POINTS' + LF() +
+            'Blocks: 4 | Total: 77,222 | Days: 44' + LF() +
+            'Questions for the salesperson:' + LF() +
+            '- Please confirm the support contingent of 50 hours in task 005010 (PCR-23)' + LF() +
+            'Changes applied:' + LF() +
+            '- Ending Date (2027-03-31 -> 2027-03-31, confirmed as target)' + LF() +
+            '- Quantity of I-MOBILE-APP in task 003020 (300 -> 324)' + LF() +
+            'Not applied:' + LF() +
+            '- Customer contact: the Sell-to Contact field is not editable for the agent' + LF() +
+            '- Discount of 5%: discounts are not allowed (PCR-16)' + LF() +
+            'Waiting for answers from the salesperson.');
+    end;
+
+    procedure CancelledReport(ProjectNo: Code[20]): Text
+    begin
+        exit(
+            'Project ' + ProjectNo + ' review: CANCELLED' + LF() +
+            'Stopped: the salesperson cancelled the project.');
+    end;
+
     procedure OkReport(ProjectNo: Code[20]): Text
     begin
         exit(

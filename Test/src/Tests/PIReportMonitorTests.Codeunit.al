@@ -6,8 +6,8 @@ using System.TestLibraries.Utilities;
 
 /// <summary>
 /// Business Central calls AnalyzeAgentTaskMessage only for the input messages of an agent task, not for the
-/// agent's replies. The report monitor job therefore reads the replies that were sent and raises the
-/// clarification event for each of them exactly once.
+/// agent's replies. The report monitor job therefore reads the replies that were sent and raises the automatic
+/// events (answers not applied, project cancelled) for each of them exactly once.
 /// </summary>
 codeunit 50155 "PI Report Monitor Tests"
 {
@@ -20,24 +20,25 @@ codeunit 50155 "PI Report Monitor Tests"
         ReportMonitor: Codeunit "PI Report Monitor";
 
     [Test]
-    procedure SentReportWithQuestionsRaisesTheEventOnce()
+    procedure SentReportWithChangesNotAppliedRaisesTheEventOnce()
     var
         Job: Record Job;
         ClarificationEventSpy: Codeunit "PI Clarification Event Spy";
         MessageId: Guid;
     begin
-        // [GIVEN] A reply of the agent with questions
+        // [GIVEN] A reply of the agent after applying answers, with points it could not apply
         TestLibrary.CreateProject(Job, Job.Status::Planning);
         MessageId := CreateGuid();
         BindSubscription(ClarificationEventSpy);
 
         // [WHEN] The monitor sees the same reply twice (two job runs)
-        ReportMonitor.ProcessReport(MessageId, 25, Job."No.", TestLibrary.OpenPointsReport(Job."No."));
-        ReportMonitor.ProcessReport(MessageId, 25, Job."No.", TestLibrary.OpenPointsReport(Job."No."));
+        ReportMonitor.ProcessReport(MessageId, 25, Job."No.", TestLibrary.AnswersAppliedReport(Job."No."));
+        ReportMonitor.ProcessReport(MessageId, 25, Job."No.", TestLibrary.AnswersAppliedReport(Job."No."));
 
-        // [THEN] The salesperson is asked once
+        // [THEN] The salesperson is told once; the questions of the report are not sent without a decision
         UnbindSubscription(ClarificationEventSpy);
-        Assert.AreEqual(1, ClarificationEventSpy.GetRaisedCount(), 'The event must be raised once per reply.');
+        Assert.AreEqual(1, ClarificationEventSpy.GetEventCount('ProjectChangesNotApplied'), 'The event must be raised once per reply.');
+        Assert.AreEqual(0, ClarificationEventSpy.GetEventCount('ProjectClarificationRequested'), 'Questions go out only on the reviewer''s decision.');
     end;
 
     [Test]
@@ -48,13 +49,13 @@ codeunit 50155 "PI Report Monitor Tests"
         MessageId: Guid;
         TaskId: BigInteger;
     begin
-        // [GIVEN] A reply of the agent with questions
+        // [GIVEN] A reply of the agent with points it could not apply
         TestLibrary.CreateProject(Job, Job.Status::Planning);
         MessageId := CreateGuid();
         TaskId := 25;
 
         // [WHEN] The monitor processes it
-        ReportMonitor.ProcessReport(MessageId, TaskId, Job."No.", TestLibrary.OpenPointsReport(Job."No."));
+        ReportMonitor.ProcessReport(MessageId, TaskId, Job."No.", TestLibrary.AnswersAppliedReport(Job."No."));
 
         // [THEN] The log shows the task, the project and that the event was raised
         PIProcessedReport.Get(MessageId);
@@ -64,24 +65,24 @@ codeunit 50155 "PI Report Monitor Tests"
     end;
 
     [Test]
-    procedure ReportWithoutQuestionsIsLoggedWithoutEvent()
+    procedure ReportWithOnlyQuestionsIsLoggedWithoutEvent()
     var
         Job: Record Job;
         PIProcessedReport: Record "PI Processed Report";
         ClarificationEventSpy: Codeunit "PI Clarification Event Spy";
         MessageId: Guid;
     begin
-        // [GIVEN] An OK reply without questions
+        // [GIVEN] An OPEN POINTS reply: questions, nothing applied
         TestLibrary.CreateProject(Job, Job.Status::Planning);
         MessageId := CreateGuid();
         BindSubscription(ClarificationEventSpy);
 
         // [WHEN] The monitor processes it
-        ReportMonitor.ProcessReport(MessageId, 25, Job."No.", TestLibrary.OkReport(Job."No."));
+        ReportMonitor.ProcessReport(MessageId, 25, Job."No.", TestLibrary.OpenPointsReport(Job."No."));
 
-        // [THEN] Nobody is asked, but the reply is logged so it is not read again
+        // [THEN] Nobody is asked before the reviewer decides, but the reply is logged so it is not read again
         UnbindSubscription(ClarificationEventSpy);
-        Assert.AreEqual(0, ClarificationEventSpy.GetRaisedCount(), 'No event for a report without questions.');
+        Assert.AreEqual(0, ClarificationEventSpy.GetTotalEventCount(), 'No event before the reviewer decides.');
         PIProcessedReport.Get(MessageId);
         Assert.IsFalse(PIProcessedReport."Event Raised", 'The event must be logged as not raised.');
     end;

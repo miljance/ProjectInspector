@@ -139,6 +139,48 @@ codeunit 50151 "PI Report Parser Tests"
     end;
 
     [Test]
+    procedure GetFindingsTextReturnsTheFindings()
+    begin
+        // [GIVEN] / [WHEN] The findings of the TAI-01-IMP report are read
+        // [THEN] Both findings, one per line, without the questions
+        Assert.AreEqual(
+            'Unit Price 1,100 instead of 1,250 for R-CONSULT in task 002010 (PCR-14)' + TestLibrary.LF() +
+            'Discount of 375 on R-CONSULT in task 002010 (PCR-16)',
+            ReportParser.GetFindingsText(TestLibrary.ErrorsReport('TAI-01-IMP')), 'Wrong findings.');
+    end;
+
+    [Test]
+    procedure GetNotAppliedTextReturnsThePointsWithReasons()
+    begin
+        // [GIVEN] / [WHEN] The report after applying answers is read
+        // [THEN] Only the points under Not applied are returned
+        Assert.AreEqual(
+            'Customer contact: the Sell-to Contact field is not editable for the agent' + TestLibrary.LF() +
+            'Discount of 5%: discounts are not allowed (PCR-16)',
+            ReportParser.GetNotAppliedText(TestLibrary.AnswersAppliedReport('FAB-01-IMP')), 'Wrong points not applied.');
+    end;
+
+    [Test]
+    procedure GetQuestionsStopsAtChangesApplied()
+    var
+        Questions: List of [Text];
+    begin
+        // [GIVEN] / [WHEN] The questions of the report after applying answers are read
+        ReportParser.GetQuestions(TestLibrary.AnswersAppliedReport('FAB-01-IMP'), Questions);
+
+        // [THEN] Only the question, not the applied changes
+        Assert.AreEqual(1, Questions.Count(), 'One question expected.');
+        Assert.AreEqual('Please confirm the support contingent of 50 hours in task 005010 (PCR-23)', Questions.Get(1), 'Wrong question.');
+    end;
+
+    [Test]
+    procedure NotAppliedTextIsEmptyWithoutSection()
+    begin
+        // [GIVEN] / [WHEN] / [THEN] A report without the section has nothing not applied
+        Assert.AreEqual('', ReportParser.GetNotAppliedText(TestLibrary.ErrorsReport('TAI-01-IMP')), 'Nothing expected.');
+    end;
+
+    [Test]
     procedure GetProjectNoReadsTheFirstLine()
     begin
         // [GIVEN] An ERRORS report for TAI-01-IMP

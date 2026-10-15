@@ -20,25 +20,48 @@ codeunit 50109 "PI Report Parser"
         ProjectPrefixTok: Label 'Project ', Locked = true;
         ReviewSeparatorTok: Label ' review:', Locked = true;
         QuestionsHeaderTok: Label 'Questions for the salesperson:', Locked = true;
+        FindingsHeaderTok: Label 'Findings:', Locked = true;
+        NotAppliedHeaderTok: Label 'Not applied:', Locked = true;
         BulletTok: Label '- ', Locked = true;
 
     procedure GetQuestions(ReportText: Text; var Questions: List of [Text])
+    begin
+        GetSection(ReportText, QuestionsHeaderTok, Questions);
+    end;
+
+    /// <summary>
+    /// Returns the last line of the report, for example "Stopped: the salesperson cancelled the project.".
+    /// </summary>
+    procedure GetClosingLine(ReportText: Text): Text
     var
         Lines: List of [Text];
-        Line: Text;
-        InQuestions: Boolean;
     begin
-        Clear(Questions);
         GetLines(ReportText, Lines);
-        foreach Line in Lines do begin
-            if InQuestions then begin
-                if not Line.StartsWith(BulletTok) then
-                    exit;
-                Questions.Add(Line.Substring(StrLen(BulletTok) + 1).Trim());
-            end;
-            if Line = QuestionsHeaderTok then
-                InQuestions := true;
-        end;
+        if Lines.Count() = 0 then
+            exit('');
+        exit(Lines.Get(Lines.Count()));
+    end;
+
+    /// <summary>
+    /// Returns the findings as one text, one finding per line.
+    /// </summary>
+    procedure GetFindingsText(ReportText: Text): Text
+    var
+        Findings: List of [Text];
+    begin
+        GetSection(ReportText, FindingsHeaderTok, Findings);
+        exit(JoinLines(Findings));
+    end;
+
+    /// <summary>
+    /// Returns the answers the agent could not apply, one per line with the reason.
+    /// </summary>
+    procedure GetNotAppliedText(ReportText: Text): Text
+    var
+        NotApplied: List of [Text];
+    begin
+        GetSection(ReportText, NotAppliedHeaderTok, NotApplied);
+        exit(JoinLines(NotApplied));
     end;
 
     procedure HasQuestions(ReportText: Text): Boolean
@@ -55,14 +78,42 @@ codeunit 50109 "PI Report Parser"
     procedure GetQuestionsText(ReportText: Text): Text
     var
         Questions: List of [Text];
-        Question: Text;
-        Result: TextBuilder;
     begin
         GetQuestions(ReportText, Questions);
-        foreach Question in Questions do begin
+        exit(JoinLines(Questions));
+    end;
+
+    /// <summary>
+    /// Returns the bullet lines under a section header, without the "- ". The section ends at the first line without a bullet.
+    /// </summary>
+    local procedure GetSection(ReportText: Text; Header: Text; var SectionLines: List of [Text])
+    var
+        Lines: List of [Text];
+        Line: Text;
+        InSection: Boolean;
+    begin
+        Clear(SectionLines);
+        GetLines(ReportText, Lines);
+        foreach Line in Lines do begin
+            if InSection then begin
+                if not Line.StartsWith(BulletTok) then
+                    exit;
+                SectionLines.Add(Line.Substring(StrLen(BulletTok) + 1).Trim());
+            end;
+            if Line = Header then
+                InSection := true;
+        end;
+    end;
+
+    local procedure JoinLines(Lines: List of [Text]): Text
+    var
+        Line: Text;
+        Result: TextBuilder;
+    begin
+        foreach Line in Lines do begin
             if Result.Length() > 0 then
                 Result.Append(LineFeed());
-            Result.Append(Question);
+            Result.Append(Line);
         end;
         exit(Result.ToText());
     end;

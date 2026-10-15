@@ -4,9 +4,10 @@ using System.Agents;
 using System.Threading;
 
 /// <summary>
-/// Job queue job: reads the replies Project Inspector sent and raises ProjectClarificationRequested for each one with questions.
+/// Job queue job: reads the replies Project Inspector sent and raises the events that need no decision
+/// (answers not applied, project cancelled), and carries out the reviewer's decisions (Approve, Reject, Send Questions).
 /// Business Central calls AnalyzeAgentTaskMessage only for the input messages of a task, not for the agent's replies
-/// (checked on BC 29), so the event cannot be raised in the agent session. A reply counts once it is Sent or Reviewed,
+/// (checked on BC 29), so the events cannot be raised in the agent session. A reply counts once it is Sent or Reviewed,
 /// that is after a user chose Continue on the draft.
 /// </summary>
 codeunit 50113 "PI Report Monitor"
@@ -15,11 +16,76 @@ codeunit 50113 "PI Report Monitor"
     Access = Public;
 
     var
-        JobDescriptionTxt: Label 'Project Inspector: send questions from review reports to the salesperson';
+        JobDescriptionTxt: Label 'Project Inspector: send review decisions and notifications';
 
     trigger OnRun()
     begin
         CheckSentReports();
+        ProcessPendingDecisions();
+    end;
+
+    /// <summary>
+    /// Carries out the reviewer's decisions (Approve, Reject, Send Questions) with the latest report of each project.
+    /// </summary>
+    procedure ProcessPendingDecisions()
+    var
+        PIReviewDecisionEntry: Record "PI Review Decision Entry";
+        ReviewDecisions: Codeunit "PI Review Decisions";
+        TaskId: BigInteger;
+        TaskStatus: Text;
+        ReportStatus: Text;
+        ReportCreatedAt: DateTime;
+        ReportText: Text;
+    begin
+        PIReviewDecisionEntry.SetCurrentKey(Processed, "Entry No.");
+        PIReviewDecisionEntry.SetRange(Processed, false);
+        if not PIReviewDecisionEntry.FindSet(true) then
+            exit;
+        repeat
+            GetLatestReport(PIReviewDecisionEntry."Project No.", TaskId, TaskStatus, ReportStatus, ReportCreatedAt, ReportText);
+            ReviewDecisions.ProcessDecision(PIReviewDecisionEntry, ReportText);
+        until PIReviewDecisionEntry.Next() = 0;
+    end;
+
+    /// <summary>
+    /// The newest reply of Project Inspector on the newest task of the project in this company.
+    /// </summary>
+    procedure GetLatestReport(ProjectNo: Code[20]; var TaskId: BigInteger; var TaskStatus: Text; var ReportStatus: Text; var ReportCreatedAt: DateTime; var ReportText: Text): Boolean
+    var
+        AgentTask: Record "Agent Task";
+        AgentTaskMessage: Record "Agent Task Message";
+        PIAgentSetup: Codeunit "PI Agent Setup";
+        AgentMessage: Codeunit "Agent Message";
+        AgentUserSecurityId: Guid;
+    begin
+        Clear(TaskId);
+        Clear(TaskStatus);
+        Clear(ReportStatus);
+        Clear(ReportCreatedAt);
+        Clear(ReportText);
+        if not PIAgentSetup.TryGetActiveAgent(AgentUserSecurityId) then
+            exit(false);
+
+        AgentTask.SetRange("Agent User Security ID", AgentUserSecurityId);
+        AgentTask.SetRange("External ID", ProjectNo);
+        AgentTask.SetRange("Company Name", CompanyName());
+        if not AgentTask.FindLast() then
+            exit(false);
+        TaskId := AgentTask.ID;
+        TaskStatus := Format(AgentTask.Status);
+
+        AgentTaskMessage.SetRange("Task ID", AgentTask.ID);
+        AgentTaskMessage.SetRange(Type, AgentTaskMessage.Type::Output);
+        if not AgentTaskMessage.FindSet() then
+            exit(false);
+        repeat
+            if AgentTaskMessage.SystemCreatedAt > ReportCreatedAt then begin
+                ReportCreatedAt := AgentTaskMessage.SystemCreatedAt;
+                ReportStatus := Format(AgentTaskMessage.Status);
+                ReportText := AgentMessage.GetText(AgentTaskMessage);
+            end;
+        until AgentTaskMessage.Next() = 0;
+        exit(true);
     end;
 
     procedure CheckSentReports()

@@ -1,7 +1,6 @@
 namespace Contoso.ProjectInspector;
 
 using Microsoft.Projects.Project.Job;
-using System.Agents;
 
 /// <summary>
 /// For running the demo projects again after the instructions changed (an evaluation run), not for Scribe Agent:
@@ -98,38 +97,8 @@ page 50106 "PI Review Reports API"
 
     local procedure LoadLatestReport()
     var
-        AgentTask: Record "Agent Task";
-        AgentTaskMessage: Record "Agent Task Message";
-        PIAgentSetup: Codeunit "PI Agent Setup";
-        AgentMessage: Codeunit "Agent Message";
-        AgentUserSecurityId: Guid;
+        ReportMonitor: Codeunit "PI Report Monitor";
     begin
-        Clear(TaskId);
-        Clear(TaskStatus);
-        Clear(ReportStatus);
-        Clear(ReportCreatedAt);
-        Clear(ReportText);
-        if not PIAgentSetup.TryGetActiveAgent(AgentUserSecurityId) then
-            exit;
-
-        AgentTask.SetRange("Agent User Security ID", AgentUserSecurityId);
-        AgentTask.SetRange("External ID", Rec."No.");
-        AgentTask.SetRange("Company Name", CompanyName());
-        if not AgentTask.FindLast() then
-            exit;
-        TaskId := AgentTask.ID;
-        TaskStatus := Format(AgentTask.Status);
-
-        AgentTaskMessage.SetRange("Task ID", AgentTask.ID);
-        AgentTaskMessage.SetRange(Type, AgentTaskMessage.Type::Output);
-        if not AgentTaskMessage.FindSet() then
-            exit;
-        repeat
-            if AgentTaskMessage.SystemCreatedAt > ReportCreatedAt then begin
-                ReportCreatedAt := AgentTaskMessage.SystemCreatedAt;
-                ReportStatus := Format(AgentTaskMessage.Status);
-                ReportText := AgentMessage.GetText(AgentTaskMessage);
-            end;
-        until AgentTaskMessage.Next() = 0;
+        ReportMonitor.GetLatestReport(Rec."No.", TaskId, TaskStatus, ReportStatus, ReportCreatedAt, ReportText);
     end;
 }
