@@ -16,6 +16,9 @@ codeunit 50160 "PI Mock Task Dispatcher" implements "PI ITask Dispatcher"
         Available: Boolean;
         SendCount: Integer;
         AnswerCount: Integer;
+        StopCount: Integer;
+        LastStoppedProjectNo: Code[20];
+        SendCountAtStop: Integer;
         LastProjectNo: Code[20];
         LastTitle: Text[150];
         LastMessage: Text;
@@ -27,6 +30,9 @@ codeunit 50160 "PI Mock Task Dispatcher" implements "PI ITask Dispatcher"
         Available := true;
         SendCount := 0;
         AnswerCount := 0;
+        StopCount := 0;
+        Clear(LastStoppedProjectNo);
+        SendCountAtStop := 0;
         Clear(LastProjectNo);
         Clear(LastTitle);
         Clear(LastMessage);
@@ -57,6 +63,31 @@ codeunit 50160 "PI Mock Task Dispatcher" implements "PI ITask Dispatcher"
         AnswerCount += 1;
         LastAnswerProjectNo := ProjectNo;
         LastAnswer := MessageText;
+    end;
+
+    procedure StopReview(ProjectNo: Code[20])
+    begin
+        StopCount += 1;
+        LastStoppedProjectNo := ProjectNo;
+        SendCountAtStop := SendCount;
+    end;
+
+    procedure GetStopCount(): Integer
+    begin
+        exit(StopCount);
+    end;
+
+    procedure GetLastStoppedProjectNo(): Code[20]
+    begin
+        exit(LastStoppedProjectNo);
+    end;
+
+    /// <summary>
+    /// How many reviews had been sent when StopReview was called last, to check the order of the calls.
+    /// </summary>
+    procedure GetSendCountAtStop(): Integer
+    begin
+        exit(SendCountAtStop);
     end;
 
     procedure GetSendCount(): Integer

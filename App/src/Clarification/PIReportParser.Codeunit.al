@@ -1,5 +1,7 @@
 namespace Contoso.ProjectInspector;
 
+using System.Utilities;
+
 /// <summary>
 /// Reads the review report of Project Inspector (format defined in step 7 of the instructions):
 ///   Project &lt;No.&gt; review: &lt;status&gt;
@@ -102,7 +104,8 @@ codeunit 50109 "PI Report Parser"
     end;
 
     /// <summary>
-    /// Splits the report into trimmed, non-empty lines. Works with LF and CR LF line breaks.
+    /// Splits the report into trimmed, non-empty lines. Works with LF and CR LF line breaks and with the HTML
+    /// the agent stores in Business Central (&lt;br&gt; between the lines, entities such as &amp;amp;).
     /// </summary>
     local procedure GetLines(ReportText: Text; var Lines: List of [Text])
     var
@@ -112,11 +115,22 @@ codeunit 50109 "PI Report Parser"
     begin
         Clear(Lines);
         CarriageReturn[1] := 13;
-        foreach RawLine in ReportText.Split(LineFeed()) do begin
+        foreach RawLine in ToPlainText(ReportText).Split(LineFeed()) do begin
             Line := RawLine.Replace(CarriageReturn, '').Trim();
             if Line <> '' then
                 Lines.Add(Line);
         end;
+    end;
+
+    local procedure ToPlainText(ReportText: Text): Text
+    var
+        Regex: Codeunit Regex;
+        PlainText: Text;
+    begin
+        PlainText := Regex.Replace(ReportText, '(?i)<br\s*/?>|</p\s*>', LineFeed());
+        PlainText := Regex.Replace(PlainText, '<[^>]+>', '');
+        PlainText := PlainText.Replace('&nbsp;', ' ').Replace('&lt;', '<').Replace('&gt;', '>').Replace('&quot;', '"').Replace('&#39;', '''');
+        exit(PlainText.Replace('&amp;', '&'));
     end;
 
     local procedure LineFeed(): Text[1]

@@ -91,6 +91,54 @@ codeunit 50151 "PI Report Parser Tests"
     end;
 
     [Test]
+    procedure GetQuestionsHandlesHtmlLineBreaks()
+    var
+        Questions: List of [Text];
+        ReportText: Text;
+    begin
+        // [GIVEN] The LIT-01-SUP report as the agent stores it in Business Central: <br> instead of line breaks
+        ReportText := TestLibrary.TwoQuestionsReport('LIT-01-SUP').Replace(TestLibrary.LF(), '<br>');
+
+        // [WHEN] The questions are read
+        ReportParser.GetQuestions(ReportText, Questions);
+
+        // [THEN] Both questions are found, without markup
+        Assert.AreEqual(2, Questions.Count(), 'Two questions expected.');
+        Assert.AreEqual('Please confirm the planned start and end date (PCR-20)', Questions.Get(1), 'Wrong first question.');
+        Assert.AreEqual('Please confirm the support contingent of 60 hours in task 002010 (PCR-23)', Questions.Get(2), 'Wrong second question.');
+    end;
+
+    [Test]
+    procedure GetStatusAndProjectNoHandleHtmlLineBreaks()
+    var
+        ReportText: Text;
+    begin
+        // [GIVEN] A report with <br /> line breaks
+        ReportText := TestLibrary.ErrorsReport('TAI-01-IMP').Replace(TestLibrary.LF(), '<br />');
+
+        // [WHEN] / [THEN] Status and project No. come from the first line only
+        Assert.AreEqual('ERRORS', ReportParser.GetStatus(ReportText), 'Wrong status.');
+        Assert.AreEqual('TAI-01-IMP', ReportParser.GetProjectNo(ReportText), 'Wrong project No.');
+    end;
+
+    [Test]
+    procedure GetQuestionsDecodesHtmlEntities()
+    var
+        Questions: List of [Text];
+        ReportText: Text;
+    begin
+        // [GIVEN] A question with an ampersand, stored as &amp;
+        ReportText := 'Project FAB-01-IMP review: OPEN POINTS<br>Questions for the salesperson:<br>- Travel &amp; trips: how many? (PCR-24)<br>Waiting for answers from the salesperson.';
+
+        // [WHEN] The questions are read
+        ReportParser.GetQuestions(ReportText, Questions);
+
+        // [THEN] The question is readable text for Teams
+        Assert.AreEqual(1, Questions.Count(), 'One question expected.');
+        Assert.AreEqual('Travel & trips: how many? (PCR-24)', Questions.Get(1), 'Wrong question text.');
+    end;
+
+    [Test]
     procedure GetProjectNoReadsTheFirstLine()
     begin
         // [GIVEN] An ERRORS report for TAI-01-IMP

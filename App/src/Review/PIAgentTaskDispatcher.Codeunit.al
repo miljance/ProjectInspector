@@ -65,6 +65,22 @@ codeunit 50107 "PI Agent Task Dispatcher" implements "PI ITask Dispatcher"
         PIAgentKPI.AddAnswerReceived(AgentUserSecurityId);
     end;
 
+    procedure StopReview(ProjectNo: Code[20])
+    var
+        AgentTaskRecord: Record "Agent Task";
+        AgentTask: Codeunit "Agent Task";
+        AgentUserSecurityId: Guid;
+        Attempts: Integer;
+    begin
+        AgentUserSecurityId := GetActiveAgent();
+        Attempts := 0;
+        // A stopped task no longer matches FindReviewTask; the limit only guards against a task that does not stop.
+        while FindReviewTask(AgentUserSecurityId, ProjectNo, AgentTaskRecord) and (Attempts < 10) do begin
+            AgentTask.StopTask(AgentTaskRecord.ID, false);
+            Attempts += 1;
+        end;
+    end;
+
     local procedure GetActiveAgent() AgentUserSecurityId: Guid
     begin
         if not PIAgentSetup.TryGetActiveAgent(AgentUserSecurityId) then

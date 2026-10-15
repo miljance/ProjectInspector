@@ -20,4 +20,10 @@ interface "PI ITask Dispatcher"
     /// Adds the answer of the salesperson to the review task of the project.
     /// </summary>
     procedure AddAnswer(ProjectNo: Code[20]; MessageText: Text);
+
+    /// <summary>
+    /// Stops the review tasks of the project that can still run, so the next review starts a new task
+    /// with the current instructions.
+    /// </summary>
+    procedure StopReview(ProjectNo: Code[20]);
 }

@@ -37,6 +37,25 @@ codeunit 50106 "PI Review Trigger"
     end;
 
     /// <summary>
+    /// Stops the project's review task and starts a new one, which uses the current instructions.
+    /// Used to run the demo projects again after the instructions changed (reviewReports API).
+    /// </summary>
+    procedure RestartReview(var Job: Record Job)
+    var
+        Dispatcher: Interface "PI ITask Dispatcher";
+    begin
+        if Job.Status <> Job.Status::Planning then
+            Error(NotInPlanningErr, Job."No.");
+
+        Dispatcher := DispatcherProvider.GetDispatcher();
+        if not Dispatcher.IsAvailable() then
+            Error(NoActiveAgentErr);
+
+        Dispatcher.StopReview(Job."No.");
+        SendReview(Dispatcher, Job);
+    end;
+
+    /// <summary>
     /// Called after the Status of a project was validated. Sends the project for review when an existing
     /// project changes to Planning. Never blocks the status change.
     /// </summary>

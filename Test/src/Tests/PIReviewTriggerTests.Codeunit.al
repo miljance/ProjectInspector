@@ -91,6 +91,43 @@ codeunit 50150 "PI Review Trigger Tests"
     end;
 
     [Test]
+    procedure RestartReviewStopsTheOldTaskBeforeSending()
+    var
+        Job: Record Job;
+    begin
+        // [GIVEN] A project in status Planning that was reviewed before
+        TestLibrary.UseMockDispatcher();
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+
+        // [WHEN] The review is restarted (after new instructions were published)
+        ReviewTrigger.RestartReview(Job);
+
+        // [THEN] The old task of the project is stopped first, then one new review is sent
+        Assert.AreEqual(1, MockTaskDispatcher.GetStopCount(), 'The old review task must be stopped.');
+        Assert.AreEqual(Job."No.", MockTaskDispatcher.GetLastStoppedProjectNo(), 'The task of the wrong project was stopped.');
+        Assert.AreEqual(0, MockTaskDispatcher.GetSendCountAtStop(), 'The old task must be stopped before the new review is sent.');
+        Assert.AreEqual(1, MockTaskDispatcher.GetSendCount(), 'One new review must be sent.');
+    end;
+
+    [Test]
+    procedure RestartReviewFailsWhenProjectIsNotInPlanning()
+    var
+        Job: Record Job;
+    begin
+        // [GIVEN] A project in status Quote
+        TestLibrary.UseMockDispatcher();
+        TestLibrary.CreateProject(Job, Job.Status::Quote);
+
+        // [WHEN] The review is restarted
+        asserterror ReviewTrigger.RestartReview(Job);
+
+        // [THEN] Nothing is stopped or sent
+        Assert.ExpectedError('is not in status Planning');
+        Assert.AreEqual(0, MockTaskDispatcher.GetStopCount(), 'No task must be stopped.');
+        Assert.AreEqual(0, MockTaskDispatcher.GetSendCount(), 'No review task must be sent.');
+    end;
+
+    [Test]
     procedure StatusChangedToPlanningSendsReview()
     var
         Job: Record Job;
