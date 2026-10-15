@@ -25,17 +25,21 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
 2. Check the task structure in the Tasks part of the Project Card (PCR-10, PCR-11, PCR-13).
    a. Memorize the key tasks with every task as "<Project Task No.> <Description> <Project Task Type>".
    b. Task 000000 must be Begin-Total and task 999999 must be End-Total (PCR-11).
-   c. The Standard block must exist: task 001000 has the description "Standard" and
+   c. The Standard block must exist: task 001000 has exactly the description "Standard" and
       task 001900 has the description "Total Standard".
-      If not, add the finding "Standard block 001000..001900 missing (PCR-10)".
+      Memorize standard_block = "yes" or "no". Write "no" when task 001000 has any other description,
+      for example a quote title like "Q-26-0430 ANALYSIS WORKSHOP".
+      If standard_block is "no", add the finding "Standard block 001000..001900 missing (PCR-10)"
+      and treat block 001000 as a quote block in all later steps.
    d. Every other block starts with a Begin-Total task x000 and ends with an
       End-Total task x900 (PCR-11).
    e. Posting tasks in the Standard block (001010 to 001890) are only INTERNAL,
       GOODWILL, WARRANTY or TRAVEL. This is correct, do not report them.
    f. Posting tasks in all other blocks are only SERVICES, TRAVEL,
       THIRD-PARTY SOFTWARE, OWN SOFTWARE or CONTINGENT (PCR-13).
-   g. Memorize every block title (description of each Begin-Total task except
-      000000 and 001000) as block_<task no.>.
+   g. Memorize every block title as block_<task no.>: the description of each Begin-Total task
+      except 000000 and the Standard block. When standard_block is "no", 001000 is a quote block
+      and its title is memorized too.
 3. Check the planning lines (PCR-10, PCR-14, PCR-16).
    a. On the Project Card, in the Project menu, invoke "Project Planning Lines".
       Do not filter the list.
@@ -50,7 +54,7 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    f. Memorize total = sum of Line Amount, and days = sum of Quantity for
       R-CONSULT, R-DEV, R-TRAINER, R-PM.
    g. Every posting task in a quote block needs at least one line.
-      Standard block tasks (001xxx) have no lines (PCR-10).
+      Tasks of the Standard block have no lines (PCR-10). When standard_block is "no", 001xxx tasks are quote tasks.
    h. Close the page.
 4. Check the customer (PCR-07).
    a. Close the open pages until you are back on the Project Manager home page.
