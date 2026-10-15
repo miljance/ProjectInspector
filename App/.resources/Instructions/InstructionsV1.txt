@@ -63,8 +63,9 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    b. If another project of the same customer has Status Planning or Quote and a similar description,
       report "Possible duplicate <No.> (PCR-03)".
 6. Collect questions for the salesperson.
-   Ask ONLY when something is missing or unclear in the project data.
+   For a. to e.: ask ONLY when something is missing or unclear in the project data,
    DO NOT ask about values that are filled in and follow the rules.
+   For f.: always ask, also when the project already has a value for it.
    a. Starting Date or Ending Date is empty:
       "Please confirm the planned start and end date (PCR-20)".
    b. A block title starts with Q-NEW:
@@ -78,9 +79,11 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       If none of their descriptions contains a date (for example "10-11 Nov 2026"):
       "Please confirm the workshop dates for task <SERVICES task no.> (PCR-22)".
       Never ask about the TRAVEL task of the block: travel lines have no dates.
-   f. Add every line of the Open Points field of the project as a question, followed by (PCR-24).
-      Leave out an open point that a question from a. to e. already covers.
-      Example: "Services: split of days by phase?" is covered by c.; ask only the question from c.
+   f. Every line of the Open Points field of the project is one question: the line as it is,
+      followed by (PCR-24). The salesperson wrote these points; they are open until answered.
+      Leave out a line only when it asks the same as a question from a. to e.
+      Example: "Services: split of days by phase?" asks the same as c.; keep only the question from c.
+      All other lines stay, for example "Go-live: fixed date or target?" even when Ending Date is filled in.
    If none of a. to f. applies, there are no questions.
    Memorize the key questions with all questions, or "none".
 7. Reply with the review report.
