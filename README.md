@@ -57,6 +57,7 @@ Base URL: `/api/contoso/projectInspector/v1.0/companies({companyId})/`
 | `projectReviews` (GET, PATCH `openPoints`, action `submitForReview`) | 50102 | Scribe Agent through the MCP server (configuration `SCRIBE-AGENT`, Read + Modify) |
 | `clarificationAnswers` (POST) | 50103 | Power Automate |
 | `agentStatuses` (GET) | 50105 | Checking a deployment: instructions version and counters of each agent |
+| `reviewReports` (GET, action `restartReview`) | 50106 | Evaluation runs: latest report of each project, start a new review task |
 
 ## Set up
 
@@ -95,7 +96,7 @@ Write tests first, with Given/When/Then comments and one behaviour per test. Cha
 
 The instructions are in `App/.resources/Instructions/InstructionsV1.txt`. To change them, edit the file, raise the version in `App/app.json` and publish: `PI Agent Upgrade` sets the new instructions on every Project Inspector agent. After publishing, check **Instructions version** in the agent setup dialog or with GET `agentStatuses`: Business Central cannot show the instructions themselves.
 
-They were tuned on the six demo projects below, so after a change run all six again. `PI Report Parser` reads the report format of step 7: if the format changes, change the parser and the samples in `Test/src/Library/PITestLibrary.Codeunit.al` together.
+They were tuned on the six demo projects below, so after a change run all six again with `tools/Run-ReviewEval.ps1` (it restarts the reviews through the `reviewReports` API, waits for the reports and checks status, totals and every finding and question by rule ID; each run uses Copilot credits, the reports stay drafts). `PI Report Parser` reads the report format of step 7: if the format changes, change the parser and the samples in `Test/src/Library/PITestLibrary.Codeunit.al` together.
 
 ### Expected review results
 
