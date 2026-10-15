@@ -69,15 +69,19 @@ codeunit 50107 "PI Agent Task Dispatcher" implements "PI ITask Dispatcher"
             Error(NoActiveAgentErr);
     end;
 
+    /// <summary>
+    /// Finds the newest task of the project that can still run. A stopped or archived task never runs again,
+    /// even with new input, so the project then gets a new task (which also starts with the current instructions).
+    /// </summary>
     local procedure FindReviewTask(AgentUserSecurityId: Guid; ProjectNo: Code[20]; var AgentTaskRecord: Record "Agent Task"): Boolean
-    var
-        AgentTask: Codeunit "Agent Task";
     begin
-        // GetTaskByExternalId fails when there is no task, so check first.
-        if not AgentTask.TaskExists(AgentUserSecurityId, ProjectNo) then
-            exit(false);
-        AgentTaskRecord := AgentTask.GetTaskByExternalId(AgentUserSecurityId, ProjectNo);
-        exit(true);
+        AgentTaskRecord.Reset();
+        AgentTaskRecord.SetRange("Agent User Security ID", AgentUserSecurityId);
+        AgentTaskRecord.SetRange("External ID", ProjectNo);
+        AgentTaskRecord.SetRange(Archived, false);
+        AgentTaskRecord.SetFilter(Status, '<>%1&<>%2&<>%3',
+            AgentTaskRecord.Status::"Stopped by User", AgentTaskRecord.Status::"Stopped by System", AgentTaskRecord.Status::Stopping);
+        exit(AgentTaskRecord.FindLast());
     end;
 
     local procedure AddMessageToTask(var AgentTaskRecord: Record "Agent Task"; MessageText: Text)

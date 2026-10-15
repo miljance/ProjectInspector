@@ -113,7 +113,7 @@ The other five results come from the Agent Designer version of the agent. The fi
 
 - **The agent is read-only** (D365 READ). All writes (tasks, answers, events) happen in AL code, never by the agent.
 - **No trigger on project insert**: tasks and planning lines do not exist yet. Scribe Agent calls `submitForReview` when it is done (PCR-27).
-- **One task per project**, External ID = project No. Repeated triggers and answers add messages to that task.
+- **One task per project**, External ID = project No. Repeated triggers and answers add messages to that task. A task keeps the instructions it was created with, and a stopped or archived task never runs again, so the dispatcher only reuses a task that is not stopped or archived. To test new instructions, stop the old task and send the project again: it gets a new task.
 - **The task message only names the project** (`Review <No.>`); the agent finds the open points in the data (step 6 of the instructions).
 - **The business event is raised by code** (analysis of the output message), so the instructions stay unchanged.
 - **Dispatcher interface + provider** exist only to make the triggers testable without an activated agent.
