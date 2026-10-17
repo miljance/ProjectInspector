@@ -4,7 +4,7 @@ A Business Central agent, built with the AL Agent SDK, that reviews every new cu
 
 Built for the Directions EMEA 2026 session **"One Voice Note, a Complete Project. AI Agents at Work in Business Central"** (29 Oct 2026). The agent was designed and tested in Agent Designer, exported (`App/.resources/Instructions/ProjectInspector-agent-export.xml`) and moved into this app with the AL **Agent** project template.
 
-**Status:** version 2.19 compiles against BC 29 and all 96 tests pass in a BC 29 sandbox. The one-approval review flow (Review Result page, decision after Continue) is being tested end to end in the sandbox, see [Next steps](#next-steps).
+**Status:** version 2.20 compiles against BC 29 and all 96 tests pass in a BC 29 sandbox. The one-approval review flow (Review Result page, decision after Continue) is being tested end to end in the sandbox, see [Next steps](#next-steps).
 
 All demo content is fictional (CRONUS US style). **Never add real customer, company or product names.**
 

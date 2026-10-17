@@ -31,14 +31,17 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
 2. Check the task structure in the Tasks part of the Project Card (PCR-10, PCR-11, PCR-13).
    If the Tasks part shows no tasks, add the finding "Project has no tasks and no planning lines (PCR-10, PCR-11)",
    memorize blocks 0, total 0 and days 0, skip the rest of step 2 and step 3, and continue with step 4.
+   Run every check from b. to f., one after the other, and after each one memorize its own key
+   check_2b ... check_2f with its findings, or "none" when it found nothing. Never skip a check.
    a. Memorize the key tasks with every task as "<Project Task No.> <Description> <Project Task Type>".
    b. Task 000000 must be Begin-Total and task 999999 must be End-Total (PCR-11).
    c. The Standard block must exist: task 001000 has exactly the description "Standard" and
       task 001900 has the description "Total Standard".
       Memorize standard_block = "yes" or "no". Write "no" when task 001000 has any other description,
       for example a quote title like "Q-26-0999 TRAINING".
-      If standard_block is "no", add the finding "Standard block 001000..001900 missing (PCR-10)"
-      and treat block 001000 as a quote block in all later steps.
+      If standard_block is "no", memorize check_2c = "Standard block 001000..001900 missing (PCR-10)"
+      and treat block 001000 as a quote block in all later steps. This finding stays in the report:
+      a project without a Standard block always has it.
    d. Every other block starts with a Begin-Total task x000 and ends with an
       End-Total task x900 (PCR-11).
    e. Only when standard_block is "yes": posting tasks in the Standard block (001010 to 001890) are only
@@ -65,7 +68,8 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    d. For every memorized line, compare Qty x Price with Line Amount. If Line Amount is lower,
       add the finding "Discount of <Qty x Price - Line Amount> on <No.> in task <task no.> (PCR-16)",
       for example Qty x Price 2200 and Line Amount 1980 give "Discount of 220".
-   e. Memorize the key findings with all findings so far, or "none".
+   e. Memorize the key findings with the findings of check_2b to check_2f and of step 3, in this order,
+      or "none".
    f. If total is "missing", memorize total = sum of Line Amount.
       Memorize days = the Planned Days from step 1c. Business Central sums them; do not add them up yourself.
    g. Every posting task in a quote block needs at least one line.
