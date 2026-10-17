@@ -4,7 +4,7 @@ A Business Central agent, built with the AL Agent SDK, that reviews every new cu
 
 Built for the Directions EMEA 2026 session **"One Voice Note, a Complete Project. AI Agents at Work in Business Central"** (29 Oct 2026). The agent was designed and tested in Agent Designer, exported (`App/.resources/Instructions/ProjectInspector-agent-export.xml`) and moved into this app with the AL **Agent** project template.
 
-**Status:** version 2.15 compiles against BC 29 and all 95 tests pass in a BC 29 sandbox. The one-approval review flow (Review Result page, decision after Continue) is being tested end to end in the sandbox, see [Next steps](#next-steps).
+**Status:** version 2.17 compiles against BC 29 and all 96 tests pass in a BC 29 sandbox. The one-approval review flow (Review Result page, decision after Continue) is being tested end to end in the sandbox, see [Next steps](#next-steps).
 
 All demo content is fictional (CRONUS US style). **Never add real customer, company or product names.**
 
@@ -131,6 +131,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50158 PI Project Structure Tests | `buildProjectStructure`: indentation, totaling (also Total tasks), line numbers, card prices, unit of measure, project currency, required quantity, date format, status Planning, refused input |
 | 50159 PI Suggestion Tests | no decision buttons on the result card (the reviewer uses the Decision field), project check elsewhere, the agent's own profile |
 | 50163 PI Review Result Tests | one result per round created by code, older open result replaced, stopped task closes its result, only a decision a person chose is carried out, events name their result and the full questions are readable, decision waits for Continue, each result carried out once, edited report, status text, task link |
+| 50164 PI Planned Days Tests | Planned Days on the Project Card sum only the resource lines planned in days |
 
 Not covered by unit tests, because they need an agent session or a real agent: `PI Agent Task Dispatcher` (Tasks AL API, task status), the agent-session parts of the result pages (only open results, Decision editable only for the agent), and the agent's behaviour itself. Check those in the sandbox.
 
@@ -169,6 +170,7 @@ Version 2.12 (steps 6f and 6g: every Open Points line is asked in the first repo
 - **The task message only names the project** (`Review <No.>`); the agent finds the open points in the data (step 6 of the instructions).
 - **Dispatcher interface + provider** exist only to make the triggers and the Continue check testable without an activated agent.
 - **Answers come in through a table + API page** (`clarificationAnswers`), not a bound action with parameters: simple for Power Automate, and it keeps a log.
+- **Business Central does the arithmetic.** The report's total is the Billable (Total Price) of task 999999 and its days are **Planned Days** on the Project Card (resource lines with unit of measure DAY). Adding up the lines itself, the agent was off by 100 USD or 2 days in some runs.
 - **Prices always come from the cards** (PCR-14), also in `buildProjectStructure`; a price discussed with the customer becomes an open point (PCR-15, PCR-16) for a person to decide.
 
 ### BC 29 agent API notes

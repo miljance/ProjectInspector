@@ -25,9 +25,9 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
 1. Open the project.
    a. From the home page open Projects and open the project named in the task message.
    b. If the project does not exist or Status is not Planning, ask for assistance and stop.
-   c. Memorize: Project No., Description, Customer Name, Starting Date, Ending Date, Open Points.
+   c. Memorize: Project No., Description, Customer Name, Starting Date, Ending Date, Open Points, Planned Days.
       Starting Date and Ending Date are in the Duration section. Write "empty" for a date that has no value.
-      Format: "Project: FAB-01-IMP | Customer: Fabrikam Field Services | Start: 2026-11-10 | End: 2027-03-31"
+      Format: "Project: FAB-01-IMP | Customer: Fabrikam Field Services | Start: 2026-11-10 | End: 2027-03-31 | Planned Days: 44"
 2. Check the task structure in the Tasks part of the Project Card (PCR-10, PCR-11, PCR-13).
    If the Tasks part shows no tasks, add the finding "Project has no tasks and no planning lines (PCR-10, PCR-11)",
    memorize blocks 0, total 0 and days 0, skip the rest of step 2 and step 3, and continue with step 4.
@@ -48,11 +48,14 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    g. Memorize every block title as block_<task no.>: the description of each Begin-Total task
       except 000000 and the Standard block. When standard_block is "no", 001000 is a quote block
       and its title is memorized too.
+   h. Memorize total = the Billable (Total Price) of task 999999. Business Central sums the planning lines
+      for it; do not add up the line amounts yourself. Write "missing" if there is no task 999999.
 3. Check the planning lines (PCR-10, PCR-14, PCR-16).
    a. On the Project Card, in the Project menu, invoke "Project Planning Lines".
       Do not filter the list.
    b. For EVERY row, memorize one key line_<Project Task No.>_<row number> with the value
-      "<No.> | Qty <Quantity> | Unit Price <Unit Price> | Qty x Price <Quantity x Unit Price> | Line Amount <Line Amount>".
+      "<No.> | <Description> | Qty <Quantity> | Unit Price <Unit Price> | Qty x Price <Quantity x Unit Price> | Line Amount <Line Amount>".
+      Steps 6c and 6e check the descriptions: keep them exactly as shown.
       Calculate Qty x Price yourself, for example 2 x 1100 = 2200.
    c. For every memorized line, compare Unit Price with the RATE CARD price for <No.>.
       If different, add the finding
@@ -61,8 +64,8 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       add the finding "Discount of <Qty x Price - Line Amount> on <No.> in task <task no.> (PCR-16)",
       for example Qty x Price 2200 and Line Amount 1980 give "Discount of 220".
    e. Memorize the key findings with all findings so far, or "none".
-   f. Memorize total = sum of Line Amount, and days = sum of Quantity for
-      R-CONSULT, R-DEV, R-TRAINER, R-PM.
+   f. If total is "missing", memorize total = sum of Line Amount.
+      Memorize days = the Planned Days from step 1c. Business Central sums them; do not add them up yourself.
    g. Every posting task in a quote block needs at least one line.
       Tasks of the Standard block have no lines (PCR-10). When standard_block is "no", 001xxx tasks are quote tasks.
    h. Close the page.
@@ -86,12 +89,12 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    b. Go through every memorized block_<task no.>. A title that starts with "Q-NEW" (for example
       "Q-NEW-2 TRAINING") means the quote number is missing, even though the title is filled in.
       For each such block: "Please confirm the quote number for block <task no.> (PCR-12)".
-   c. A SERVICES task has exactly one planning line with the description
+   c. A SERVICES task has exactly one memorized line, and its description is
       "Implementation services":
       "Please split the <quantity> days in task <task no.> by phase (PCR-23)".
    d. A CONTINGENT task has a quantity other than 20, 40, 80 or 120:
       "Please confirm the support contingent of <quantity> hours in task <task no.> (PCR-23)".
-   e. In an ANALYSIS WORKSHOP block, look only at the planning lines of its SERVICES task.
+   e. In an ANALYSIS WORKSHOP block, look only at the memorized lines of its SERVICES task.
       If none of their descriptions contains a date (for example "3-4 Feb 2027"):
       "Please confirm the workshop dates for task <SERVICES task no.> (PCR-22)".
       Never ask about the TRAVEL task of the block: travel lines have no dates.

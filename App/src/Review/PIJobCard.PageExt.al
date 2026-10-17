@@ -17,6 +17,10 @@ pageextension 50100 "PI Job Card" extends "Job Card"
                 MultiLine = true;
                 Visible = IsAgentSession;
             }
+            field("PI Planned Days"; Rec."PI Planned Days")
+            {
+                ApplicationArea = Jobs;
+            }
         }
         addafter(General)
         {
