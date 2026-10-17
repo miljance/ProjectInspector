@@ -41,8 +41,10 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       and treat block 001000 as a quote block in all later steps.
    d. Every other block starts with a Begin-Total task x000 and ends with an
       End-Total task x900 (PCR-11).
-   e. Posting tasks in the Standard block (001010 to 001890) are only INTERNAL,
-      GOODWILL, WARRANTY or TRAVEL. This is correct, do not report them.
+   e. Only when standard_block is "yes": posting tasks in the Standard block (001010 to 001890) are only
+      INTERNAL, GOODWILL, WARRANTY or TRAVEL. This is correct, do not report them.
+      When standard_block is "no", tasks 001010 to 001890 belong to the quote block 001000 and every
+      later step checks them like the tasks of any other quote block.
    f. Posting tasks in all other blocks are only SERVICES, TRAVEL,
       THIRD-PARTY SOFTWARE, OWN SOFTWARE or CONTINGENT (PCR-13).
    g. Memorize every block title as block_<task no.>: the description of each Begin-Total task
@@ -97,7 +99,8 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    d. Go through every CONTINGENT task in the key tasks. If its memorized line has a quantity other than
       20, 40, 80 or 120:
       "Please confirm the support contingent of <quantity> hours in task <task no.> (PCR-23)".
-   e. In an ANALYSIS WORKSHOP block, look only at the memorized lines of its SERVICES task.
+   e. Go through every memorized block_<task no.> whose title contains ANALYSIS WORKSHOP, also block
+      001000 when standard_block is "no". Look only at the memorized lines of its SERVICES task.
       If none of their descriptions contains a date (for example "3-4 Feb 2027"):
       "Please confirm the workshop dates for task <SERVICES task no.> (PCR-22)".
       Never ask about the TRAVEL task of the block: travel lines have no dates.
