@@ -19,7 +19,7 @@ codeunit 50103 "PI Agent Setup"
         BaseApplicationAppIdTok: Label '437dbf0e-84ff-417a-965d-ed2bb9650972', Locked = true;
         DefaultPermissionSetTok: Label 'D365 READ', Locked = true;
         AgentEditPermissionSetTok: Label 'PI AGENT EDIT', Locked = true;
-        DefaultProfileTok: Label 'PROJECT MANAGER', Locked = true;
+        DefaultProfileTok: Label 'PROJECT INSPECTOR AGENT', Locked = true;
         InstructionsResourceTok: Label 'Instructions/InstructionsV1.txt', Locked = true;
         AgentInitialsLbl: Label 'PI', MaxLength = 4;
         AgentNameLbl: Label 'PROJECT INSPECTOR', Locked = true;
@@ -51,11 +51,27 @@ codeunit 50103 "PI Agent Setup"
     end;
 
     /// <summary>
-    /// Project Inspector starts on the standard Project Manager home page, like in Agent Designer.
+    /// Project Inspector starts on its own home page (profile "Project Inspector Agent"), whose menu has every page
+    /// the instructions use. On the Project Manager home page it could not reach the Review Results page.
     /// </summary>
     procedure GetDefaultProfile(var TempAllProfile: Record "All Profile" temporary)
+    var
+        CurrentModuleInfo: ModuleInfo;
     begin
-        Agent.PopulateDefaultProfile(DefaultProfileTok, GetBaseApplicationAppId(), TempAllProfile);
+        NavApp.GetCurrentModuleInfo(CurrentModuleInfo);
+        Agent.PopulateDefaultProfile(DefaultProfileTok, CurrentModuleInfo.Id(), TempAllProfile);
+    end;
+
+    /// <summary>
+    /// Gives an existing agent the current profile. Called on upgrade, because agents created before version 2.6
+    /// started on the Project Manager home page.
+    /// </summary>
+    procedure UpdateProfile(AgentUserSecurityId: Guid)
+    var
+        CurrentModuleInfo: ModuleInfo;
+    begin
+        NavApp.GetCurrentModuleInfo(CurrentModuleInfo);
+        Agent.SetProfile(AgentUserSecurityId, DefaultProfileTok, CurrentModuleInfo.Id());
     end;
 
     /// <summary>

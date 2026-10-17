@@ -81,6 +81,36 @@ codeunit 50107 "PI Agent Task Dispatcher" implements "PI ITask Dispatcher"
         end;
     end;
 
+    procedure GetReviewTaskId(ProjectNo: Code[20]): BigInteger
+    var
+        AgentTaskRecord: Record "Agent Task";
+        AgentUserSecurityId: Guid;
+    begin
+        if not PIAgentSetup.TryGetActiveAgent(AgentUserSecurityId) then
+            exit(0);
+        if not FindReviewTask(AgentUserSecurityId, ProjectNo, AgentTaskRecord) then
+            exit(0);
+        exit(AgentTaskRecord.ID);
+    end;
+
+    procedure IsReviewTaskStopped(AgentTaskId: BigInteger): Boolean
+    var
+        AgentTaskRecord: Record "Agent Task";
+    begin
+        if not AgentTaskRecord.Get(AgentTaskId) then
+            exit(true);
+        exit(AgentTaskRecord.Status in [AgentTaskRecord.Status::"Stopped by User", AgentTaskRecord.Status::"Stopped by System"]);
+    end;
+
+    procedure IsReviewTaskFinished(AgentTaskId: BigInteger): Boolean
+    var
+        AgentTaskRecord: Record "Agent Task";
+    begin
+        if not AgentTaskRecord.Get(AgentTaskId) then
+            exit(false);
+        exit(AgentTaskRecord.Status = AgentTaskRecord.Status::Completed);
+    end;
+
     local procedure GetActiveAgent() AgentUserSecurityId: Guid
     begin
         if not PIAgentSetup.TryGetActiveAgent(AgentUserSecurityId) then

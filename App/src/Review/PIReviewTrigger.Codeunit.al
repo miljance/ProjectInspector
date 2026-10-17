@@ -100,6 +100,7 @@ codeunit 50106 "PI Review Trigger"
         LineFeed[1] := 10;
         Dispatcher := DispatcherProvider.GetDispatcher();
         Dispatcher.AddAnswer(Job."No.", StrSubstNo(AnswerTxt, Job."No.") + LineFeed + ClarificationAnswer.Answer);
+        StartRound(Dispatcher, Job."No.");
         ClarificationAnswer."Received At" := CurrentDateTime();
     end;
 
@@ -109,5 +110,17 @@ codeunit 50106 "PI Review Trigger"
     begin
         ReviewText := StrSubstNo(ReviewTxt, Job."No.");
         Dispatcher.SendReview(Job."No.", CopyStr(ReviewText, 1, 150), ReviewText);
+        StartRound(Dispatcher, Job."No.");
+    end;
+
+    /// <summary>
+    /// Every review round gets its own result, created in the same transaction as the task or message, so the agent
+    /// finds it as soon as it starts.
+    /// </summary>
+    local procedure StartRound(Dispatcher: Interface "PI ITask Dispatcher"; ProjectNo: Code[20])
+    var
+        PIReviewResult: Record "PI Review Result";
+    begin
+        PIReviewResult.StartRound(ProjectNo, Dispatcher.GetReviewTaskId(ProjectNo));
     end;
 }

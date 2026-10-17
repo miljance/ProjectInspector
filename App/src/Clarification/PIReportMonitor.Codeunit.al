@@ -9,6 +9,8 @@ using System.Threading;
 /// Business Central calls AnalyzeAgentTaskMessage only for the input messages of a task, not for the agent's replies
 /// (checked on BC 29), so the events cannot be raised in the agent session. A reply counts once it is Sent or Reviewed,
 /// that is after a user chose Continue on the draft.
+/// Since 2.5 the agent records its report on the Review Result card and the reviewer decides there; those results are
+/// carried out here too.
 /// </summary>
 codeunit 50113 "PI Report Monitor"
 {
@@ -17,19 +19,119 @@ codeunit 50113 "PI Report Monitor"
 
     var
         JobDescriptionTxt: Label 'Project Inspector: send review decisions and notifications';
+        RecordedStatusTxt: Label 'Recorded', Locked = true;
+        ApprovedResultTxt: Label 'Approved: status set to Quote, notification sent to Teams.';
+        RejectedResultTxt: Label 'Rejected: the findings were sent to Teams.';
+        QuestionsSentResultTxt: Label 'Questions sent to the salesperson in Teams.';
+        CancelledResultTxt: Label 'Cancelled by the salesperson: notification sent to Teams.';
+        NotAppliedResultTxt: Label '%1 Answers that could not be applied were sent to Teams.', Comment = '%1 = what was done with the decision';
+        StoppedResultTxt: Label 'Review stopped before a decision.';
 
     trigger OnRun()
     begin
         CheckSentReports();
+        ProcessReviewResults();
     end;
 
     /// <summary>
-    /// The newest reply of Project Inspector on the newest task of the project in this company.
+    /// Carries out every review result the agent recorded, once: when the reviewer decided, or for a CANCELLED report.
+    /// Nothing happens before Continue: a decision chosen on the card counts only after the agent task that recorded
+    /// the result has finished. A result without agent task (recorded by a person) counts at once.
+    /// A result whose task was stopped is closed without carrying anything out.
+    /// </summary>
+    procedure ProcessReviewResults()
+    var
+        PIReviewResult: Record "PI Review Result";
+        ProcessedReviewResult: Record "PI Review Result";
+        ClarificationMgt: Codeunit "PI Clarification Mgt.";
+        DispatcherProvider: Codeunit "PI Dispatcher Provider";
+        Dispatcher: Interface "PI ITask Dispatcher";
+    begin
+        Dispatcher := DispatcherProvider.GetDispatcher();
+        PIReviewResult.SetCurrentKey(Processed, "Entry No.");
+        PIReviewResult.SetRange(Processed, false);
+        if not PIReviewResult.FindSet() then
+            exit;
+
+        repeat
+            if (PIReviewResult."Agent Task ID" > 0) and Dispatcher.IsReviewTaskStopped(PIReviewResult."Agent Task ID") then begin
+                ProcessedReviewResult.Get(PIReviewResult."Entry No.");
+                ProcessedReviewResult.Result := StoppedResultTxt;
+                ProcessedReviewResult.Processed := true;
+                ProcessedReviewResult."Processed At" := CurrentDateTime();
+                ProcessedReviewResult.Modify();
+            end else
+            if (PIReviewResult.Report <> '') and
+               ((PIReviewResult.Decision <> PIReviewResult.Decision::" ") or ClarificationMgt.IsCancelled(PIReviewResult.Report)) and
+               ((PIReviewResult."Agent Task ID" <= 0) or Dispatcher.IsReviewTaskFinished(PIReviewResult."Agent Task ID"))
+            then begin
+                // Processed is in the key the loop runs on, so the change is written through a second record.
+                ProcessedReviewResult.Get(PIReviewResult."Entry No.");
+                ClarificationMgt.HandleReviewResult(ProcessedReviewResult."Project No.", ProcessedReviewResult.Report, ProcessedReviewResult.Decision);
+                ProcessedReviewResult.Result := GetResultText(ProcessedReviewResult);
+                ProcessedReviewResult.Processed := true;
+                ProcessedReviewResult."Processed At" := CurrentDateTime();
+                ProcessedReviewResult.Modify();
+            end;
+        until PIReviewResult.Next() = 0;
+    end;
+
+    /// <summary>
+    /// What happened with a carried-out result, for the Result field on the card.
+    /// </summary>
+    local procedure GetResultText(var PIReviewResult: Record "PI Review Result"): Text[250]
+    var
+        ClarificationMgt: Codeunit "PI Clarification Mgt.";
+        ReportParser: Codeunit "PI Report Parser";
+        ResultText: Text;
+    begin
+        if ClarificationMgt.IsCancelled(PIReviewResult.Report) then
+            exit(CancelledResultTxt);
+
+        case PIReviewResult.Decision of
+            PIReviewResult.Decision::Approve:
+                ResultText := ApprovedResultTxt;
+            PIReviewResult.Decision::Reject:
+                ResultText := RejectedResultTxt;
+            PIReviewResult.Decision::"Send Questions":
+                ResultText := QuestionsSentResultTxt;
+        end;
+        if ReportParser.GetNotAppliedText(PIReviewResult.Report) <> '' then
+            ResultText := StrSubstNo(NotAppliedResultTxt, ResultText);
+        exit(CopyStr(ResultText, 1, 250));
+    end;
+
+    /// <summary>
+    /// Links results recorded before version 2.8 to the newest task of their project, so a decision chosen on the
+    /// card before the upgrade also waits for Continue. Called on upgrade.
+    /// </summary>
+    procedure LinkResultsToTasks()
+    var
+        PIReviewResult: Record "PI Review Result";
+        AgentTask: Record "Agent Task";
+    begin
+        PIReviewResult.SetRange(Processed, false);
+        PIReviewResult.SetRange("Agent Task ID", 0);
+        if PIReviewResult.FindSet(true) then
+            repeat
+                AgentTask.SetRange("External ID", PIReviewResult."Project No.");
+                AgentTask.SetRange("Company Name", CompanyName());
+                if AgentTask.FindLast() then begin
+                    PIReviewResult."Agent Task ID" := AgentTask.ID;
+                    PIReviewResult.Modify();
+                end;
+            until PIReviewResult.Next() = 0;
+    end;
+
+    /// <summary>
+    /// The newest report of Project Inspector on the newest task of the project in this company: its reply, or the
+    /// result it recorded on the Review Result card when that is newer (ReportStatus is then "Recorded").
     /// </summary>
     procedure GetLatestReport(ProjectNo: Code[20]; var TaskId: BigInteger; var TaskStatus: Text; var ReportStatus: Text; var ReportCreatedAt: DateTime; var ReportText: Text): Boolean
     var
         AgentTask: Record "Agent Task";
         AgentTaskMessage: Record "Agent Task Message";
+        PIReviewResult: Record "PI Review Result";
         PIAgentSetup: Codeunit "PI Agent Setup";
         AgentMessage: Codeunit "Agent Message";
         AgentUserSecurityId: Guid;
@@ -52,16 +154,24 @@ codeunit 50113 "PI Report Monitor"
 
         AgentTaskMessage.SetRange("Task ID", AgentTask.ID);
         AgentTaskMessage.SetRange(Type, AgentTaskMessage.Type::Output);
-        if not AgentTaskMessage.FindSet() then
-            exit(false);
-        repeat
-            if AgentTaskMessage.SystemCreatedAt > ReportCreatedAt then begin
-                ReportCreatedAt := AgentTaskMessage.SystemCreatedAt;
-                ReportStatus := Format(AgentTaskMessage.Status);
-                ReportText := AgentMessage.GetText(AgentTaskMessage);
-            end;
-        until AgentTaskMessage.Next() = 0;
-        exit(true);
+        if AgentTaskMessage.FindSet() then
+            repeat
+                if AgentTaskMessage.SystemCreatedAt > ReportCreatedAt then begin
+                    ReportCreatedAt := AgentTaskMessage.SystemCreatedAt;
+                    ReportStatus := Format(AgentTaskMessage.Status);
+                    ReportText := AgentMessage.GetText(AgentTaskMessage);
+                end;
+            until AgentTaskMessage.Next() = 0;
+
+        PIReviewResult.SetRange("Project No.", ProjectNo);
+        PIReviewResult.SetFilter(Report, '<>%1', '');
+        PIReviewResult.SetFilter("Recorded At", '>%1', ReportCreatedAt);
+        if PIReviewResult.FindLast() then begin
+            ReportCreatedAt := PIReviewResult."Recorded At";
+            ReportStatus := RecordedStatusTxt;
+            ReportText := PIReviewResult.Report;
+        end;
+        exit(ReportText <> '');
     end;
 
     procedure CheckSentReports()

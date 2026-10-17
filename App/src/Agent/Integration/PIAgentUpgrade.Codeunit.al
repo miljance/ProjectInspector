@@ -26,4 +26,23 @@ codeunit 50105 "PI Agent Upgrade"
             PIAgentSetup.UpdateAccessControls(PIAgentSetupRecord."User Security ID");
         until PIAgentSetupRecord.Next() = 0;
     end;
+
+    /// <summary>
+    /// The profile is part of the agent's user settings, which Business Central reads per company.
+    /// </summary>
+    trigger OnUpgradePerCompany()
+    var
+        PIAgentSetupRecord: Record "PI Agent Setup";
+        PIAgentSetup: Codeunit "PI Agent Setup";
+        ReportMonitor: Codeunit "PI Report Monitor";
+    begin
+        ReportMonitor.LinkResultsToTasks();
+
+        if not PIAgentSetupRecord.FindSet() then
+            exit;
+
+        repeat
+            PIAgentSetup.UpdateProfile(PIAgentSetupRecord."User Security ID");
+        until PIAgentSetupRecord.Next() = 0;
+    end;
 }

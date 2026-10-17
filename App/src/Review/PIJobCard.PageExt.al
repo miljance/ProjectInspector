@@ -1,17 +1,46 @@
 namespace Contoso.ProjectInspector;
 
 using Microsoft.Projects.Project.Job;
+using System.Agents;
 
 pageextension 50100 "PI Job Card" extends "Job Card"
 {
     layout
     {
+        // The agent edits the plain field (step 8 removes settled points). People get a full-width editor in its own
+        // FastTab, one point per line, like the outgoing message editor.
         addlast(General)
         {
             field("PI Open Points"; Rec."PI Open Points")
             {
                 ApplicationArea = Jobs;
                 MultiLine = true;
+                Visible = IsAgentSession;
+            }
+        }
+        addafter(General)
+        {
+            group(PIOpenPoints)
+            {
+                Caption = 'Open Points';
+                Visible = not IsAgentSession;
+
+                field(PIOpenPointsHtml; OpenPointsHtml)
+                {
+                    ApplicationArea = Jobs;
+                    Caption = 'Open Points';
+                    ToolTip = 'Specifies the open points Scribe Agent found in the conversation, one per line as <topic>: <question> (PCR-24). Project Inspector asks the salesperson about each of them.';
+                    ShowCaption = false;
+                    MultiLine = true;
+                    ExtendedDatatype = RichContent;
+
+                    trigger OnValidate()
+                    var
+                        ReportParser: Codeunit "PI Report Parser";
+                    begin
+                        Rec.Validate("PI Open Points", CopyStr(ReportParser.ToReportText(OpenPointsHtml), 1, MaxStrLen(Rec."PI Open Points")));
+                    end;
+                }
             }
         }
     }
@@ -38,6 +67,23 @@ pageextension 50100 "PI Job Card" extends "Job Card"
         }
     }
 
+    trigger OnOpenPage()
+    var
+        AgentSession: Codeunit "Agent Session";
+        AgentMetadataProvider: Enum "Agent Metadata Provider";
+    begin
+        IsAgentSession := AgentSession.IsAgentSession(AgentMetadataProvider);
+    end;
+
+    trigger OnAfterGetCurrRecord()
+    var
+        ReportParser: Codeunit "PI Report Parser";
+    begin
+        OpenPointsHtml := ReportParser.ToHtml(Rec."PI Open Points");
+    end;
+
     var
         SentMsg: Label 'Project %1 was sent to Project Inspector.', Comment = '%1 = project No.';
+        OpenPointsHtml: Text;
+        IsAgentSession: Boolean;
 }

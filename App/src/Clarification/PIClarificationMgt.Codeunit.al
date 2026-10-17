@@ -14,9 +14,10 @@ codeunit 50110 "PI Clarification Mgt."
         ReportParser: Codeunit "PI Report Parser";
         BusinessEvents: Codeunit "PI Business Events";
         CancelledStatusTok: Label 'CANCELLED', Locked = true;
-        ApprovedDecisionTok: Label 'APPROVED', Locked = true;
-        RejectedDecisionTok: Label 'REJECTED', Locked = true;
-        QuestionsSentDecisionTok: Label 'QUESTIONS SENT', Locked = true;
+        ApprovedDecisionTok: Label 'APPROVE', Locked = true;
+        RejectedDecisionTok: Label 'REJECT', Locked = true;
+        QuestionsSentDecisionTok: Label 'QUESTIONS', Locked = true;
+        SendQuestionsDecisionTok: Label 'SEND', Locked = true;
 
     /// <summary>
     /// Called for every report the agent sent: raises ProjectChangesNotApplied and ProjectCancelled, and carries out the
@@ -52,14 +53,64 @@ codeunit 50110 "PI Clarification Mgt."
         end;
     end;
 
+    /// <summary>
+    /// Called for a review result the agent recorded on the Review Result card: raises ProjectCancelled for a CANCELLED
+    /// report and ProjectChangesNotApplied for answers not applied, and carries out the reviewer's decision from the
+    /// card. Returns true when an event was raised.
+    /// </summary>
+    procedure HandleReviewResult(ProjectNo: Code[20]; ReportText: Text; ResultDecision: Enum "PI Review Result Decision") Raised: Boolean
+    var
+        Job: Record Job;
+        ReviewDecisions: Codeunit "PI Review Decisions";
+        NotApplied: Text;
+    begin
+        if not FindProject(ProjectNo, ReportText, Job) then
+            exit(false);
+
+        if IsCancelled(ReportText) then begin
+            BusinessEvents.RaiseCancelled(Job, ReportParser.GetClosingLine(ReportText));
+            exit(true);
+        end;
+
+        NotApplied := ReportParser.GetNotAppliedText(ReportText);
+        if NotApplied <> '' then begin
+            BusinessEvents.RaiseChangesNotApplied(Job, NotApplied);
+            Raised := true;
+        end;
+
+        case ResultDecision of
+            ResultDecision::Approve:
+                ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::Approve, ReportText);
+            ResultDecision::Reject:
+                ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::Reject, ReportText);
+            ResultDecision::"Send Questions":
+                ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::"Send Questions", ReportText);
+            else
+                exit;
+        end;
+        Raised := true;
+    end;
+
+    /// <summary>
+    /// True for a CANCELLED report, which is carried out without a reviewer's decision.
+    /// </summary>
+    procedure IsCancelled(ReportText: Text): Boolean
+    begin
+        exit(ReportParser.GetStatus(ReportText) = CancelledStatusTok);
+    end;
+
+    /// <summary>
+    /// The reviewer may overwrite the decision the agent proposed in the reply, so only the start of the word counts:
+    /// "APPROVED (change to ...)", "approve", "Reject" and "send questions" are all read. The text is already upper case.
+    /// </summary>
     local procedure TryGetDecision(DecisionText: Text; var Decision: Enum "PI Review Decision"): Boolean
     begin
-        case DecisionText of
-            ApprovedDecisionTok:
+        case true of
+            DecisionText.StartsWith(ApprovedDecisionTok):
                 Decision := Decision::Approve;
-            RejectedDecisionTok:
+            DecisionText.StartsWith(RejectedDecisionTok):
                 Decision := Decision::Reject;
-            QuestionsSentDecisionTok:
+            DecisionText.StartsWith(QuestionsSentDecisionTok), DecisionText.StartsWith(SendQuestionsDecisionTok):
                 Decision := Decision::"Send Questions";
             else
                 exit(false);

@@ -6,7 +6,10 @@ Runs Project Inspector on the six demo projects and checks each report against t
 Restarts the review of every demo project through the reviewReports API (the old task is stopped, a new one
 starts with the current instructions), waits for the agent's reports and compares facts, not wording:
 status, total, days, and for every finding and question its rule ID and task or number.
-Each run uses Copilot credits. The reports stay drafts, so no question goes to Teams.
+It also checks that every line of the project's Open Points field is asked in the first report (PCR-24),
+except the lines checks 6b and 6c already ask ("Quote numbers", "Services").
+Each run uses Copilot credits. The reports wait for the reviewer's decision on the Review Result card, so no
+question goes to Teams.
 Needs the Azure CLI signed in to the tenant (az account get-access-token).
 
 .EXAMPLE
@@ -52,6 +55,26 @@ function Get-Reports {
     (Invoke-RestMethod "$base`?`$filter=status eq 'Planning'" -Headers @{ Authorization = "Bearer $(Get-Token)" }).value
 }
 
+function Get-OpenPoints {
+    $url = "$root/contoso/projectInspector/v1.0/companies($companyId)/projectReviews?`$select=number,openPoints"
+    $map = @{}
+    (Invoke-RestMethod $url -Headers @{ Authorization = "Bearer $(Get-Token)" }).value | ForEach-Object { $map[$_.number] = $_.openPoints }
+    $map
+}
+
+# Open Points lines that checks 6b and 6c ask in their own words
+$CoveredTopics = '^(Quote numbers|Services)\s*:'
+
+function Test-OpenPoints([string] $OpenPoints, [string[]] $Questions) {
+    $problems = @()
+    foreach ($point in ($OpenPoints -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+        if ($point -match $CoveredTopics) { continue }
+        $topic = ($point -split ':', 2)[0].Trim()
+        if (-not ($Questions | Where-Object { $_.Contains($topic) -and $_ -match 'PCR-24' })) { $problems += "open point not asked: '$point'" }
+    }
+    $problems
+}
+
 function ConvertTo-Lines([string] $Report) {
     $plain = $Report -replace '(?i)<br\s*/?>|</p\s*>', "`n" -replace '<[^>]+>', ''
     $plain = $plain.Replace('&nbsp;', ' ').Replace('&lt;', '<').Replace('&gt;', '>').Replace('&quot;', '"').Replace('&#39;', "'").Replace('&amp;', '&')
@@ -82,10 +105,12 @@ function Test-Report([string] $ProjectNo, [string] $Report) {
         }
         foreach ($extra in $remaining) { $problems += "extra $($kind.TrimEnd('s').ToLower()): '$extra'" }
     }
+    $problems += @(Test-OpenPoints $OpenPointsByProject[$ProjectNo] $found.Questions)
     $problems
 }
 
-# 1. Restart every review
+# 1. Restart every review (Open Points are read first: the agent changes them only when it applies answers)
+$OpenPointsByProject = Get-OpenPoints
 $started = [DateTime]::UtcNow
 $reports = Get-Reports
 foreach ($projectNo in $Projects) {

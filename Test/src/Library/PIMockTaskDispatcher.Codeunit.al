@@ -24,6 +24,10 @@ codeunit 50160 "PI Mock Task Dispatcher" implements "PI ITask Dispatcher"
         LastMessage: Text;
         LastAnswerProjectNo: Code[20];
         LastAnswer: Text;
+        TaskFinished: Boolean;
+        LastCheckedTaskId: BigInteger;
+        ReviewTaskId: BigInteger;
+        TaskStopped: Boolean;
 
     procedure Reset()
     begin
@@ -38,6 +42,46 @@ codeunit 50160 "PI Mock Task Dispatcher" implements "PI ITask Dispatcher"
         Clear(LastMessage);
         Clear(LastAnswerProjectNo);
         Clear(LastAnswer);
+        TaskFinished := true;
+        LastCheckedTaskId := 0;
+        ReviewTaskId := 4711;
+        TaskStopped := false;
+    end;
+
+    procedure SetTaskStopped(NewTaskStopped: Boolean)
+    begin
+        TaskStopped := NewTaskStopped;
+    end;
+
+    procedure IsReviewTaskStopped(AgentTaskId: BigInteger): Boolean
+    begin
+        exit(TaskStopped);
+    end;
+
+    procedure SetReviewTaskId(NewReviewTaskId: BigInteger)
+    begin
+        ReviewTaskId := NewReviewTaskId;
+    end;
+
+    procedure GetReviewTaskId(ProjectNo: Code[20]): BigInteger
+    begin
+        exit(ReviewTaskId);
+    end;
+
+    procedure SetTaskFinished(NewTaskFinished: Boolean)
+    begin
+        TaskFinished := NewTaskFinished;
+    end;
+
+    procedure IsReviewTaskFinished(AgentTaskId: BigInteger): Boolean
+    begin
+        LastCheckedTaskId := AgentTaskId;
+        exit(TaskFinished);
+    end;
+
+    procedure GetLastCheckedTaskId(): BigInteger
+    begin
+        exit(LastCheckedTaskId);
     end;
 
     procedure SetAvailable(NewAvailable: Boolean)

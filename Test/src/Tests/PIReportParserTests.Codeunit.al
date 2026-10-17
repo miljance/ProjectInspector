@@ -208,4 +208,18 @@ codeunit 50151 "PI Report Parser Tests"
         // [THEN] Nothing is returned
         Assert.AreEqual('', ReportParser.GetProjectNo('I could not find the project.'), 'No project No. expected.');
     end;
+
+    [Test]
+    procedure OpenPointsSurviveTheRichTextEditor()
+    var
+        OpenPoints: Text;
+    begin
+        // [GIVEN] Open Points as Scribe Agent writes them, one per line, with a character that means something in HTML
+        OpenPoints := 'Quote numbers: Q-NEW-1 & Q-NEW-2?' + TestLibrary.LF() + 'Go-live: fixed date or target?';
+
+        // [WHEN] They are shown in the full-width editor and saved back unchanged
+        // [THEN] Every line comes back as it was
+        Assert.AreEqual('Quote numbers: Q-NEW-1 &amp; Q-NEW-2?<br>Go-live: fixed date or target?', ReportParser.ToHtml(OpenPoints), 'Wrong editor text.');
+        Assert.AreEqual(OpenPoints, ReportParser.ToReportText(ReportParser.ToHtml(OpenPoints)), 'The lines must survive the editor.');
+    end;
 }

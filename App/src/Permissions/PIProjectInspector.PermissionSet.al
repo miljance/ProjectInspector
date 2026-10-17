@@ -12,6 +12,9 @@ permissionset 50100 "PI Project Inspector"
 
     Permissions =
         tabledata "PI Clarification Answer" = RIM,
+        tabledata "PI Review Result" = RM,
+        page "PI Review Results" = X,
+        page "PI Review Result Card" = X,
         table "PI Clarification Answer" = X,
         page "PI Project Reviews API" = X,
         page "PI Clarification Answers API" = X,

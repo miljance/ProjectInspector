@@ -149,4 +149,41 @@ codeunit 50156 "PI Report Event Tests"
         UnbindSubscription(ClarificationEventSpy);
         Assert.AreEqual(0, ClarificationEventSpy.GetTotalEventCount(), 'No event expected.');
     end;
+
+    [Test]
+    procedure ProposedDecisionWithHintIsCarriedOut()
+    var
+        Job: Record Job;
+        ClarificationEventSpy: Codeunit "PI Clarification Event Spy";
+    begin
+        // [GIVEN] The agent proposed "QUESTIONS SENT" with the hint, and the reviewer continued without changing it
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        BindSubscription(ClarificationEventSpy);
+
+        // [WHEN] The sent report is handled
+        ClarificationMgt.HandleAgentReport(Job."No.",
+            TestLibrary.WithDecision(TestLibrary.TwoQuestionsReport(Job."No."), 'QUESTIONS SENT (change to APPROVED or REJECTED before you continue)'));
+
+        // [THEN] The questions go out
+        UnbindSubscription(ClarificationEventSpy);
+        Assert.AreEqual(1, ClarificationEventSpy.GetEventCount('ProjectClarificationRequested'), 'The proposed decision must be carried out.');
+    end;
+
+    [Test]
+    procedure DecisionTypedByTheReviewerIsCarriedOut()
+    var
+        Job: Record Job;
+        ClarificationEventSpy: Codeunit "PI Clarification Event Spy";
+    begin
+        // [GIVEN] The reviewer overwrote the proposed decision in the message, in lower case and without the ending
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        BindSubscription(ClarificationEventSpy);
+
+        // [WHEN] The sent report is handled
+        ClarificationMgt.HandleAgentReport(Job."No.", TestLibrary.WithDecision(TestLibrary.ErrorsReport(Job."No."), 'reject'));
+
+        // [THEN] The project is rejected
+        UnbindSubscription(ClarificationEventSpy);
+        Assert.AreEqual(1, ClarificationEventSpy.GetEventCount('ProjectRejected'), 'The typed decision must be carried out.');
+    end;
 }

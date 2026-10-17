@@ -189,6 +189,36 @@ codeunit 50109 "PI Report Parser"
         end;
     end;
 
+    /// <summary>
+    /// The report as plain text, one line per report line, from text that may be HTML (the edited report on the
+    /// Review Result card, or an agent message).
+    /// </summary>
+    procedure ToReportText(ReportText: Text) Result: Text
+    var
+        Lines: List of [Text];
+        Line: Text;
+    begin
+        GetLines(ReportText, Lines);
+        foreach Line in Lines do begin
+            if Result <> '' then
+                Result += LineFeed();
+            Result += Line;
+        end;
+    end;
+
+    /// <summary>
+    /// Text with one item per line for a full-width rich text editor (RichContent): one line per line, characters with
+    /// a meaning in HTML shown as written. ToReportText turns the edited text back.
+    /// </summary>
+    procedure ToHtml(PlainText: Text) Html: Text
+    var
+        CarriageReturn: Text[1];
+    begin
+        CarriageReturn[1] := 13;
+        Html := PlainText.Replace('&', '&amp;').Replace('<', '&lt;').Replace('>', '&gt;');
+        Html := Html.Replace(CarriageReturn + LineFeed(), LineFeed()).Replace(LineFeed(), '<br>');
+    end;
+
     local procedure ToPlainText(ReportText: Text): Text
     var
         Regex: Codeunit Regex;
