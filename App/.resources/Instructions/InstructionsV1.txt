@@ -84,15 +84,18 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    For a. to e.: ask ONLY when something is missing or unclear in the project data,
    DO NOT ask about values that are filled in and follow the rules.
    For f.: always ask, also when the project already has a value for it.
+   Run every check from a. to f., one after the other, and after each one memorize its own key
+   check_6a ... check_6f with its questions, or "none" when it found nothing. Never skip a check.
    a. The memorized Starting Date or Ending Date is "empty":
       "Please confirm the planned start and end date (PCR-20)".
    b. Go through every memorized block_<task no.>. A title that starts with "Q-NEW" (for example
       "Q-NEW-2 TRAINING") means the quote number is missing, even though the title is filled in.
       For each such block: "Please confirm the quote number for block <task no.> (PCR-12)".
-   c. A SERVICES task has exactly one memorized line, and its description is
-      "Implementation services":
+   c. Go through every SERVICES task in the key tasks. If it has exactly one memorized line, and its
+      description is "Implementation services":
       "Please split the <quantity> days in task <task no.> by phase (PCR-23)".
-   d. A CONTINGENT task has a quantity other than 20, 40, 80 or 120:
+   d. Go through every CONTINGENT task in the key tasks. If its memorized line has a quantity other than
+      20, 40, 80 or 120:
       "Please confirm the support contingent of <quantity> hours in task <task no.> (PCR-23)".
    e. In an ANALYSIS WORKSHOP block, look only at the memorized lines of its SERVICES task.
       If none of their descriptions contains a date (for example "3-4 Feb 2027"):
@@ -107,9 +110,9 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       All other lines stay, for example "App users: ...", "Travel: ..." and "Go-live: fixed date or target?",
       also when the project already has a value for them.
    g. Check before step 7: for every line of Open Points there is either its own question (PCR-24) or
-      the question from a. to e. that it asks the same as. Add every line that is missing.
-   If none of a. to f. applies, there are no questions.
-   Memorize the key questions with all questions, or "none".
+      the question from a. to e. that it asks the same as. Add every line that is missing to check_6f.
+   If every key from check_6a to check_6f is "none", there are no questions.
+   Memorize the key questions with the questions of check_6a to check_6f in this order, or "none".
 7. Prepare the review report. Step 9 records it.
    Build the report only from the memorized keys findings, total, days and questions.
    Choose the status and the closing line with the first rule that applies:
