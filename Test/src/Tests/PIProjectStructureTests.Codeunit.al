@@ -1,7 +1,9 @@
 namespace Contoso.ProjectInspector.Test;
 
 using Contoso.ProjectInspector;
+using Microsoft.Finance.Currency;
 using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Foundation.UOM;
 using Microsoft.Projects.Project.Job;
 using Microsoft.Sales.Customer;
 using Microsoft.Projects.Project.Planning;
@@ -128,6 +130,148 @@ codeunit 50158 "PI Project Structure Tests"
         // [THEN] The error names the task and the allowed types
         Assert.ExpectedError('Subtotal');
         Assert.ExpectedError('Begin-Total');
+    end;
+
+    [Test]
+    procedure UnitOfMeasureOfTheLineIsUsed()
+    var
+        Job: Record Job;
+        JobPlanningLine: Record "Job Planning Line";
+        ResourceNo: Code[20];
+    begin
+        // [GIVEN] A resource priced per hour that can also be planned in days
+        CreateProjectWithCustomer(Job);
+        ResourceNo := CreateResource(140);
+        AddResourceUnitOfMeasure(ResourceNo, 'DAY', 8);
+
+        // [WHEN] Scribe Agent sends a line in days
+        ProjectStructure.Build(Job, StandardTasksJson(),
+            '[{"jobTaskNo":"002010","type":"Resource","no":"' + ResourceNo + '","quantity":2,"unitOfMeasureCode":"DAY"}]');
+
+        // [THEN] The line is in days, not in the base unit of the resource
+        JobPlanningLine.SetRange("Job No.", Job."No.");
+        JobPlanningLine.FindFirst();
+        Assert.AreEqual('DAY', JobPlanningLine."Unit of Measure Code", 'The unit of measure from the plan must be used.');
+        Assert.AreEqual(2, JobPlanningLine.Quantity, 'Wrong quantity.');
+    end;
+
+    [Test]
+    procedure LineWithoutQuantityIsRefused()
+    var
+        Job: Record Job;
+        ResourceNo: Code[20];
+    begin
+        // [GIVEN] A plan whose line has no quantity
+        CreateProjectWithCustomer(Job);
+        ResourceNo := CreateResource(1250);
+
+        // [WHEN] The structure is built
+        asserterror ProjectStructure.Build(Job, StandardTasksJson(),
+            '[{"jobTaskNo":"002010","type":"Resource","no":"' + ResourceNo + '"}]');
+
+        // [THEN] The error names the missing value instead of planning 0
+        Assert.ExpectedError('quantity');
+    end;
+
+    [Test]
+    procedure WrongPlanningDateNamesTheLine()
+    var
+        Job: Record Job;
+        ResourceNo: Code[20];
+    begin
+        // [GIVEN] A plan whose second line has a date that is not YYYY-MM-DD
+        CreateProjectWithCustomer(Job);
+        ResourceNo := CreateResource(1250);
+
+        // [WHEN] The structure is built
+        asserterror ProjectStructure.Build(Job, StandardTasksJson(),
+            '[{"jobTaskNo":"002010","type":"Resource","no":"' + ResourceNo + '","quantity":1},' +
+            '{"jobTaskNo":"002010","type":"Resource","no":"' + ResourceNo + '","quantity":1,"planningDate":"3-4 Feb 2027"}]');
+
+        // [THEN] The error names the line and the expected format
+        Assert.ExpectedError('line 2');
+        Assert.ExpectedError('YYYY-MM-DD');
+    end;
+
+    [Test]
+    procedure ProjectNotInPlanningIsRefused()
+    var
+        Job: Record Job;
+    begin
+        // [GIVEN] A project that is already in status Quote
+        CreateProjectWithCustomer(Job);
+        Job.Status := Job.Status::Quote;
+        Job.Modify(false);
+
+        // [WHEN] The structure is built
+        asserterror ProjectStructure.Build(Job, StandardTasksJson(), '[]');
+
+        // [THEN] Only a new project in Planning is built
+        Assert.ExpectedError('Planning');
+    end;
+
+    [Test]
+    procedure TotalTaskGetsItsTotaling()
+    var
+        Job: Record Job;
+        JobTask: Record "Job Task";
+    begin
+        // [GIVEN] A task list with a Total task and its totaling
+        CreateProjectWithCustomer(Job);
+
+        // [WHEN] The structure is built
+        ProjectStructure.Build(Job,
+            '[{"jobTaskNo":"000000","description":"Project","jobTaskType":"Begin-Total"},' +
+            '{"jobTaskNo":"002010","description":"SERVICES","jobTaskType":"Posting"},' +
+            '{"jobTaskNo":"002090","description":"Subtotal services","jobTaskType":"Total","totaling":"002010..002010"},' +
+            '{"jobTaskNo":"999999","description":"Total","jobTaskType":"End-Total"}]', '[]');
+
+        // [THEN] The Total task sums the range from the plan
+        JobTask.Get(Job."No.", '002090');
+        Assert.AreEqual('002010..002010', JobTask.Totaling, 'A Total task needs the totaling from the plan.');
+    end;
+
+    [Test]
+    procedure LineTakesTheCurrencyOfTheProject()
+    var
+        Job: Record Job;
+        JobPlanningLine: Record "Job Planning Line";
+        CurrencyExchangeRate: Record "Currency Exchange Rate";
+        ResourceNo: Code[20];
+    begin
+        // [GIVEN] A project in a foreign currency
+        CreateProjectWithCustomer(Job);
+        CurrencyExchangeRate.FindLast();
+        Job."Currency Code" := CurrencyExchangeRate."Currency Code";
+        Job.Modify(false);
+        ResourceNo := CreateResource(1250);
+
+        // [WHEN] The structure is built
+        ProjectStructure.Build(Job, StandardTasksJson(),
+            '[{"jobTaskNo":"002010","type":"Resource","no":"' + ResourceNo + '","quantity":1}]');
+
+        // [THEN] The line is in the project's currency, priced before it was saved
+        JobPlanningLine.SetRange("Job No.", Job."No.");
+        JobPlanningLine.FindFirst();
+        Assert.AreEqual(Job."Currency Code", JobPlanningLine."Currency Code", 'The line must take the currency of the project.');
+        Assert.AreNotEqual(0, JobPlanningLine."Currency Factor", 'The line needs the currency factor.');
+    end;
+
+    local procedure AddResourceUnitOfMeasure(ResourceNo: Code[20]; UnitOfMeasureCode: Code[10]; QtyPerUnitOfMeasure: Decimal)
+    var
+        UnitOfMeasure: Record "Unit of Measure";
+        ResourceUnitOfMeasure: Record "Resource Unit of Measure";
+    begin
+        if not UnitOfMeasure.Get(UnitOfMeasureCode) then begin
+            UnitOfMeasure.Init();
+            UnitOfMeasure.Code := UnitOfMeasureCode;
+            UnitOfMeasure.Insert();
+        end;
+        ResourceUnitOfMeasure.Init();
+        ResourceUnitOfMeasure."Resource No." := ResourceNo;
+        ResourceUnitOfMeasure.Code := UnitOfMeasureCode;
+        ResourceUnitOfMeasure."Qty. per Unit of Measure" := QtyPerUnitOfMeasure;
+        ResourceUnitOfMeasure.Insert();
     end;
 
     local procedure StandardTasksJson(): Text

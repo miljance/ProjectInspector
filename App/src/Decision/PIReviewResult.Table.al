@@ -16,7 +16,8 @@ table 50105 "PI Review Result"
     Caption = 'Project Inspector Review Result';
     DataClassification = CustomerContent;
     InherentEntitlements = RIMDX;
-    InherentPermissions = RIMDX;
+    // No InherentPermissions on the table: who may read, record and change results comes from the permission sets
+    // (PI Project Inspector, PI Agent Edit); the code that creates and carries out results grants itself what it needs.
     ReplicateData = false;
     LookupPageId = "PI Review Results";
     DrillDownPageId = "PI Review Results";
@@ -73,7 +74,38 @@ table 50105 "PI Review Result"
         field(9; Decision; Enum "PI Review Result Decision")
         {
             Caption = 'Decision';
-            ToolTip = 'Specifies the reviewer''s decision: Approve sets the project to Quote, Reject notifies the salesperson with the findings, Send Questions sends the questions of the report to the salesperson. Blank until the reviewer decided; nothing is carried out before.';
+            ToolTip = 'Specifies the reviewer''s decision: Approve sets the project to Quote, Reject notifies the salesperson with the findings, Send Questions sends the questions of the report to the salesperson. Choose it here and then Continue in the task pane; only the reviewer chooses it, never the agent. Nothing is carried out before the task is finished.';
+
+            trigger OnValidate()
+            var
+                AgentSession: Codeunit "Agent Session";
+                AgentMetadataProvider: Enum "Agent Metadata Provider";
+            begin
+                if AgentSession.IsAgentSession(AgentMetadataProvider) then
+                    Error(OnlyReviewerDecidesErr);
+                if Processed then
+                    Error(AlreadyProcessedErr, "Project No.");
+                if Decision = Decision::" " then begin
+                    Clear("Decided By");
+                    Clear("Decided At");
+                end else begin
+                    "Decided By" := UserSecurityId();
+                    "Decided At" := CurrentDateTime();
+                end;
+            end;
+        }
+        field(11; "Decided By"; Guid)
+        {
+            Caption = 'Decided By';
+            ToolTip = 'Specifies the user who chose the decision. Only a decision chosen by a person, not by the agent, is carried out.';
+            DataClassification = EndUserPseudonymousIdentifiers;
+            Editable = false;
+        }
+        field(12; "Decided At"; DateTime)
+        {
+            Caption = 'Decided At';
+            ToolTip = 'Specifies when the reviewer chose the decision.';
+            Editable = false;
         }
         field(10; "Agent Task ID"; BigInteger)
         {
@@ -105,11 +137,14 @@ table 50105 "PI Review Result"
         LastReviewResult: Record "PI Review Result";
         AgentSession: Codeunit "Agent Session";
     begin
-        if "Entry No." = 0 then
+        if "Entry No." = 0 then begin
+            // Two rounds can start at the same time (an API submit and a status change).
+            LastReviewResult.LockTable();
             if LastReviewResult.FindLast() then
                 "Entry No." := LastReviewResult."Entry No." + 1
             else
                 "Entry No." := 1;
+        end;
         "Recorded At" := CurrentDateTime();
         "Recorded By" := CopyStr(UserId(), 1, MaxStrLen("Recorded By"));
         LinkToAgentTask(AgentSession.GetCurrentSessionAgentTaskId());
@@ -136,6 +171,7 @@ table 50105 "PI Review Result"
 
     var
         AlreadyProcessedErr: Label 'The review result for project %1 was already carried out. Create a new result.', Comment = '%1 = project No.';
+        OnlyReviewerDecidesErr: Label 'Only the reviewer chooses the decision. Ask for assistance on this page and wait for the reviewer.';
 
     /// <summary>
     /// The report for the full-width view on the card (RichContent, like the outgoing message page): one line per
@@ -153,6 +189,7 @@ table 50105 "PI Review Result"
     /// the one Business Central created for its task (like the Payables Agent fills in a draft created by code).
     /// An older open result of the project is closed, so the agent always finds exactly one open result.
     /// </summary>
+    [InherentPermissions(PermissionObjectType::TableData, Database::"PI Review Result", 'RIM')]
     procedure StartRound(ProjectNo: Code[20]; AgentTaskId: BigInteger)
     var
         OpenReviewResult: Record "PI Review Result";
@@ -178,7 +215,8 @@ table 50105 "PI Review Result"
     procedure GetStatusText(): Text
     var
         ReviewingTxt: Label 'Project Inspector is reviewing the project.';
-        WaitingForDecisionTxt: Label 'Waiting for your decision in the task pane.';
+        WaitingForDecisionTxt: Label 'Waiting for your decision: choose it in the Decision field and then Continue in the task pane.';
+        NotByReviewerTxt: Label 'Decision %1 was not chosen by a reviewer and is not carried out. Choose the decision in the Decision field.', Comment = '%1 = decision';
         WaitingForContinueTxt: Label 'Decision: %1. Carried out after the task is finished.', Comment = '%1 = decision';
     begin
         if Processed then
@@ -187,7 +225,46 @@ table 50105 "PI Review Result"
             exit(ReviewingTxt);
         if Decision = Decision::" " then
             exit(WaitingForDecisionTxt);
+        if not IsDecidedByReviewer() then
+            exit(StrSubstNo(NotByReviewerTxt, Decision));
         exit(StrSubstNo(WaitingForContinueTxt, Decision));
+    end;
+
+    /// <summary>
+    /// True when a person chose the decision on the card: Business Central cannot tell which option the reviewer gave
+    /// the agent, so only a decision a person set here is carried out, never one the agent user set.
+    /// </summary>
+    procedure IsDecidedByReviewer(): Boolean
+    var
+        PIAgentSetup: Record "PI Agent Setup";
+    begin
+        if IsNullGuid("Decided By") then
+            exit(false);
+        exit(not PIAgentSetup.Get("Decided By"));
+    end;
+
+    /// <summary>
+    /// The full questions of the report, one per line, for the reviewResults API (business event parameters are cut at 250).
+    /// </summary>
+    procedure GetQuestionsText(): Text
+    var
+        ReportParser: Codeunit "PI Report Parser";
+    begin
+        exit(ReportParser.GetQuestionsText(Report));
+    end;
+
+    procedure GetFindingsText(): Text
+    var
+        ReportParser: Codeunit "PI Report Parser";
+    begin
+        exit(ReportParser.GetFindingsText(Report));
+    end;
+
+    procedure GetNotAppliedText(): Text
+    var
+        ReportParser: Codeunit "PI Report Parser";
+    begin
+        exit(ReportParser.GetNotAppliedText(Report));
     end;
 
     /// <summary>

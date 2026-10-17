@@ -147,6 +147,9 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       - Quantities: the Quantity of the matching planning line. Never change Unit Price or Line Discount %.
       - New planning lines: add them under the matching task with the rate card No., the Quantity and
         Line Type "Both Budget and Billable", for example travel trips under a TRAVEL task.
+        If the block has no TRAVEL task yet, first add one in the Tasks part: Project Task Type Posting,
+        Description TRAVEL, and the next free task number of the block before its End-Total task,
+        for example 003040 after 003030 (PCR-13).
       - Split of days: replace the one "Implementation services" line by one line per phase with the
         answered days. The total days stay the same.
       - Quote numbers: replace Q-NEW-<n> in the block title (Begin-Total task) and in "Total Q-NEW-<n>"
@@ -165,10 +168,10 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    b. Stay on this Project Inspector Review Result page and ask for assistance there. The reviewer reads the
       complete report on the page, so the message is only a short summary: the first two lines of the report,
       the number of findings and questions, and
-      "Decide: approve the project, reject it, or send the questions to the salesperson."
+      "Choose the decision in the Decision field on this page (Approve, Reject or Send Questions), then Continue."
       This is the only approval of the review round.
-   c. When the reviewer continues, set the Decision field on the page from the reviewer's instruction:
-      Approve, Reject or Send Questions. If the reviewer gave no decision, ask again.
-      Never change the report after the reviewer has seen it: the reviewer may have edited it.
+   c. When the reviewer continues, check that the Decision field on the page is filled. Never fill or change the
+      Decision field yourself: only the reviewer decides. If it is empty, ask for assistance again with the same
+      message. Never change the report after the reviewer has seen it: the reviewer may have edited it.
    d. Close the page and finish the task. DO NOT reply: Business Central carries out the decision.
    Never change the project Status yourself: Business Central sets Quote after an approval.

@@ -22,5 +22,7 @@ permissionset 50100 "PI Project Inspector"
         page "PI Agent Status API" = X,
         codeunit "PI Review Trigger" = X,
         codeunit "PI Business Events" = X,
-        codeunit "PI Report Monitor" = X;
+        codeunit "PI Report Monitor" = X,
+        codeunit "PI Review Result Processor" = X,
+        page "PI Review Results API" = X;
 }

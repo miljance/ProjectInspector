@@ -26,11 +26,13 @@ codeunit 50113 "PI Report Monitor"
         CancelledResultTxt: Label 'Cancelled by the salesperson: notification sent to Teams.';
         NotAppliedResultTxt: Label '%1 Answers that could not be applied were sent to Teams.', Comment = '%1 = what was done with the decision';
         StoppedResultTxt: Label 'Review stopped before a decision.';
+        NotDoneResultTxt: Label '%1: %2', Comment = '%1 = decision, %2 = what happened instead', Locked = true;
+        FailedResultTxt: Label 'Not carried out yet, retried every minute: %1', Comment = '%1 = error text';
 
     trigger OnRun()
     begin
         CheckSentReports();
-        ProcessReviewResults();
+        ProcessReviewResults(true);
     end;
 
     /// <summary>
@@ -40,10 +42,22 @@ codeunit 50113 "PI Report Monitor"
     /// A result whose task was stopped is closed without carrying anything out.
     /// </summary>
     procedure ProcessReviewResults()
+    begin
+        ProcessReviewResults(false);
+    end;
+
+    /// <summary>
+    /// Isolated (the job queue run): every result is carried out in its own transaction, so one result that fails
+    /// (for example a status change that is not allowed) does not roll back the others or block every later run.
+    /// The error stays on the result and it is tried again on the next run. The job itself does not fail: a recurring
+    /// job queue entry in status Error would stop running for all results.
+    /// The tests run without isolation, because a test cannot commit.
+    /// </summary>
+    [InherentPermissions(PermissionObjectType::TableData, Database::"PI Review Result", 'RM')]
+    local procedure ProcessReviewResults(Isolated: Boolean)
     var
         PIReviewResult: Record "PI Review Result";
         ProcessedReviewResult: Record "PI Review Result";
-        ClarificationMgt: Codeunit "PI Clarification Mgt.";
         DispatcherProvider: Codeunit "PI Dispatcher Provider";
         Dispatcher: Interface "PI ITask Dispatcher";
     begin
@@ -54,32 +68,95 @@ codeunit 50113 "PI Report Monitor"
             exit;
 
         repeat
-            if (PIReviewResult."Agent Task ID" > 0) and Dispatcher.IsReviewTaskStopped(PIReviewResult."Agent Task ID") then begin
+            // Processed is in the key the loop runs on, so changes are written through a second record.
+            if IsTaskStopped(Dispatcher, PIReviewResult) then begin
                 ProcessedReviewResult.Get(PIReviewResult."Entry No.");
-                ProcessedReviewResult.Result := StoppedResultTxt;
-                ProcessedReviewResult.Processed := true;
-                ProcessedReviewResult."Processed At" := CurrentDateTime();
-                ProcessedReviewResult.Modify();
+                Close(ProcessedReviewResult, StoppedResultTxt);
             end else
-            if (PIReviewResult.Report <> '') and
-               ((PIReviewResult.Decision <> PIReviewResult.Decision::" ") or ClarificationMgt.IsCancelled(PIReviewResult.Report)) and
-               ((PIReviewResult."Agent Task ID" <= 0) or Dispatcher.IsReviewTaskFinished(PIReviewResult."Agent Task ID"))
-            then begin
-                // Processed is in the key the loop runs on, so the change is written through a second record.
-                ProcessedReviewResult.Get(PIReviewResult."Entry No.");
-                ClarificationMgt.HandleReviewResult(ProcessedReviewResult."Project No.", ProcessedReviewResult.Report, ProcessedReviewResult.Decision);
-                ProcessedReviewResult.Result := GetResultText(ProcessedReviewResult);
-                ProcessedReviewResult.Processed := true;
-                ProcessedReviewResult."Processed At" := CurrentDateTime();
-                ProcessedReviewResult.Modify();
-            end;
+                if IsReadyToCarryOut(Dispatcher, PIReviewResult) then begin
+                    ProcessedReviewResult.Get(PIReviewResult."Entry No.");
+                    if Isolated then
+                        CarryOutIsolated(ProcessedReviewResult)
+                    else
+                        CarryOutReviewResult(ProcessedReviewResult);
+                end;
         until PIReviewResult.Next() = 0;
     end;
 
+    local procedure IsTaskStopped(Dispatcher: Interface "PI ITask Dispatcher"; var PIReviewResult: Record "PI Review Result"): Boolean
+    begin
+        if PIReviewResult."Agent Task ID" <= 0 then
+            exit(false);
+        exit(Dispatcher.IsReviewTaskStopped(PIReviewResult."Agent Task ID"));
+    end;
+
     /// <summary>
-    /// What happened with a carried-out result, for the Result field on the card.
+    /// A result counts when it has a report and a decision (or is a CANCELLED report), and its agent task has finished,
+    /// that is after the reviewer chose Continue. A result without agent task (recorded by a person) counts at once.
+    /// Nested checks, because AL evaluates both sides of "and" and "or".
     /// </summary>
-    local procedure GetResultText(var PIReviewResult: Record "PI Review Result"): Text[250]
+    local procedure IsReadyToCarryOut(Dispatcher: Interface "PI ITask Dispatcher"; var PIReviewResult: Record "PI Review Result"): Boolean
+    var
+        ClarificationMgt: Codeunit "PI Clarification Mgt.";
+    begin
+        if PIReviewResult.Report = '' then
+            exit(false);
+        if PIReviewResult.Decision = PIReviewResult.Decision::" " then begin
+            if not ClarificationMgt.IsCancelled(PIReviewResult.Report) then
+                exit(false);
+        end else
+            if not PIReviewResult.IsDecidedByReviewer() then
+                exit(false);
+        if PIReviewResult."Agent Task ID" <= 0 then
+            exit(true);
+        exit(Dispatcher.IsReviewTaskFinished(PIReviewResult."Agent Task ID"));
+    end;
+
+    local procedure CarryOutIsolated(var PIReviewResult: Record "PI Review Result")
+    var
+        FailedReviewResult: Record "PI Review Result";
+    begin
+        Commit();
+        if Codeunit.Run(Codeunit::"PI Review Result Processor", PIReviewResult) then
+            exit;
+        FailedReviewResult.Get(PIReviewResult."Entry No.");
+        FailedReviewResult.Result := CopyStr(StrSubstNo(FailedResultTxt, GetLastErrorText()), 1, MaxStrLen(FailedReviewResult.Result));
+        FailedReviewResult.Modify();
+        Commit();
+    end;
+
+    /// <summary>
+    /// Carries out one result and closes it with what really happened. Called directly, and by
+    /// PI Review Result Processor in its own transaction.
+    /// </summary>
+    [InherentPermissions(PermissionObjectType::TableData, Database::"PI Review Result", 'RM')]
+    internal procedure CarryOutReviewResult(var PIReviewResult: Record "PI Review Result")
+    var
+        ClarificationMgt: Codeunit "PI Clarification Mgt.";
+        ReviewContext: Codeunit "PI Review Context";
+        DecisionDone: Boolean;
+        DecisionResult: Text;
+    begin
+        // Every business event raised now names this result, so the flows can read its full texts.
+        ReviewContext.SetReviewResultId(PIReviewResult.SystemId);
+        ClarificationMgt.HandleReviewResult(PIReviewResult."Project No.", PIReviewResult.Report, PIReviewResult.Decision, DecisionDone, DecisionResult);
+        ReviewContext.ClearReviewResultId();
+        Close(PIReviewResult, GetResultText(PIReviewResult, DecisionDone, DecisionResult));
+    end;
+
+    local procedure Close(var PIReviewResult: Record "PI Review Result"; ResultText: Text)
+    begin
+        PIReviewResult.Result := CopyStr(ResultText, 1, MaxStrLen(PIReviewResult.Result));
+        PIReviewResult.Processed := true;
+        PIReviewResult."Processed At" := CurrentDateTime();
+        PIReviewResult.Modify();
+    end;
+
+    /// <summary>
+    /// What happened with a carried-out result, for the Result field on the card: the decision when it was carried out
+    /// as decided, otherwise what PI Review Decisions did instead (for example a project no longer in Planning).
+    /// </summary>
+    local procedure GetResultText(var PIReviewResult: Record "PI Review Result"; DecisionDone: Boolean; DecisionResult: Text): Text[250]
     var
         ClarificationMgt: Codeunit "PI Clarification Mgt.";
         ReportParser: Codeunit "PI Report Parser";
@@ -88,14 +165,17 @@ codeunit 50113 "PI Report Monitor"
         if ClarificationMgt.IsCancelled(PIReviewResult.Report) then
             exit(CancelledResultTxt);
 
-        case PIReviewResult.Decision of
-            PIReviewResult.Decision::Approve:
-                ResultText := ApprovedResultTxt;
-            PIReviewResult.Decision::Reject:
-                ResultText := RejectedResultTxt;
-            PIReviewResult.Decision::"Send Questions":
-                ResultText := QuestionsSentResultTxt;
-        end;
+        if DecisionDone then
+            case PIReviewResult.Decision of
+                PIReviewResult.Decision::Approve:
+                    ResultText := ApprovedResultTxt;
+                PIReviewResult.Decision::Reject:
+                    ResultText := RejectedResultTxt;
+                PIReviewResult.Decision::"Send Questions":
+                    ResultText := QuestionsSentResultTxt;
+            end
+        else
+            ResultText := StrSubstNo(NotDoneResultTxt, PIReviewResult.Decision, DecisionResult);
         if ReportParser.GetNotAppliedText(PIReviewResult.Report) <> '' then
             ResultText := StrSubstNo(NotAppliedResultTxt, ResultText);
         exit(CopyStr(ResultText, 1, 250));
@@ -105,6 +185,7 @@ codeunit 50113 "PI Report Monitor"
     /// Links results recorded before version 2.8 to the newest task of their project, so a decision chosen on the
     /// card before the upgrade also waits for Continue. Called on upgrade.
     /// </summary>
+    [InherentPermissions(PermissionObjectType::TableData, Database::"PI Review Result", 'RM')]
     procedure LinkResultsToTasks()
     var
         PIReviewResult: Record "PI Review Result";
@@ -127,6 +208,7 @@ codeunit 50113 "PI Report Monitor"
     /// The newest report of Project Inspector on the newest task of the project in this company: its reply, or the
     /// result it recorded on the Review Result card when that is newer (ReportStatus is then "Recorded").
     /// </summary>
+    [InherentPermissions(PermissionObjectType::TableData, Database::"PI Review Result", 'R')]
     procedure GetLatestReport(ProjectNo: Code[20]; var TaskId: BigInteger; var TaskStatus: Text; var ReportStatus: Text; var ReportCreatedAt: DateTime; var ReportText: Text): Boolean
     var
         AgentTask: Record "Agent Task";

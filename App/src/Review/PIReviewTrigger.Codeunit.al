@@ -62,6 +62,7 @@ codeunit 50106 "PI Review Trigger"
     procedure OnAfterStatusValidated(var Job: Record Job; var xJob: Record Job)
     var
         ExistingJob: Record Job;
+        JobTask: Record "Job Task";
         Dispatcher: Interface "PI ITask Dispatcher";
     begin
         if Job.IsTemporary() then
@@ -73,6 +74,11 @@ codeunit 50106 "PI Review Trigger"
         // A new project (for example a POST through the API) has no tasks and planning lines yet.
         // Scribe Agent sends it with Submit for Review when it is complete.
         if not ExistingJob.Get(Job."No.") then
+            exit;
+        // Scribe Agent creates a project as Open (the base table's default) and sets Planning in a second call,
+        // before it builds the structure: that is not yet a project to review.
+        JobTask.SetRange("Job No.", Job."No.");
+        if JobTask.IsEmpty() then
             exit;
 
         Dispatcher := DispatcherProvider.GetDispatcher();

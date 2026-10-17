@@ -21,7 +21,7 @@ codeunit 50159 "PI Suggestion Tests"
         TaskExecution: Codeunit "PI Agent Task Execution";
 
     [Test]
-    procedure AssistanceOnTheResultCardOffersTheDecisions()
+    procedure AssistanceOnTheResultCardOffersNoDecisionButtons()
     var
         TempRequestDetails: Record "Agent User Int Request Details" temporary;
         TempSuggestion: Record "Agent Task User Int Suggestion" temporary;
@@ -33,11 +33,8 @@ codeunit 50159 "PI Suggestion Tests"
         // [WHEN] Business Central asks for the suggestions
         TaskExecution.GetAgentTaskUserInterventionSuggestions(TempRequestDetails, TempSuggestion);
 
-        // [THEN] Approve, reject and send questions are offered, each setting the Decision field
-        AssertDecision(TempSuggestion, 'PI-APPROVE', 'Decision field to Approve');
-        AssertDecision(TempSuggestion, 'PI-REJECT', 'Decision field to Reject');
-        AssertDecision(TempSuggestion, 'PI-QUESTIONS', 'Decision field to Send Questions');
-        Assert.AreEqual(3, TempSuggestion.Count(), 'Only the three decisions belong to the result card.');
+        // [THEN] No decision is offered to the agent: the reviewer chooses it in the Decision field on the card
+        Assert.RecordIsEmpty(TempSuggestion);
     end;
 
     [Test]
@@ -91,20 +88,5 @@ codeunit 50159 "PI Suggestion Tests"
         // [THEN] It is the Project Inspector profile of this app, whose home page lists the pages the agent needs
         Assert.AreEqual('PROJECT INSPECTOR AGENT', TempAllProfile."Profile ID", 'Wrong profile.');
         Assert.AreEqual(CurrentModuleInfo.Id(), TempAllProfile."App ID", 'The profile must come from Project Inspector.');
-    end;
-
-    local procedure AssertDecision(var TempSuggestion: Record "Agent Task User Int Suggestion" temporary; SuggestionCode: Code[20]; DecisionLine: Text)
-    var
-        MissingErr: Label 'Suggestion %1 is missing.', Comment = '%1 = suggestion code', Locked = true;
-        NotAlwaysErr: Label 'Suggestion %1 must always be shown.', Comment = '%1 = suggestion code', Locked = true;
-        NoDecisionErr: Label 'Suggestion %1 must set the "%2".', Comment = '%1 = suggestion code, %2 = decision', Locked = true;
-        ReplyErr: Label 'Suggestion %1 must end the task without a reply.', Comment = '%1 = suggestion code', Locked = true;
-    begin
-        TempSuggestion.SetRange(Code, SuggestionCode);
-        Assert.IsTrue(TempSuggestion.FindFirst(), StrSubstNo(MissingErr, SuggestionCode));
-        Assert.IsTrue(TempSuggestion."Always Included", StrSubstNo(NotAlwaysErr, SuggestionCode));
-        Assert.IsTrue(TempSuggestion.Instructions.Contains(DecisionLine), StrSubstNo(NoDecisionErr, SuggestionCode, DecisionLine));
-        Assert.IsTrue(TempSuggestion.Instructions.Contains('without a reply'), StrSubstNo(ReplyErr, SuggestionCode));
-        TempSuggestion.SetRange(Code);
     end;
 }

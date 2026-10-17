@@ -21,4 +21,11 @@ codeunit 50101 "PI Agent Install"
             PIAgentSetup.UpdateInstructions(PIAgentSetupRecord."User Security ID");
         until PIAgentSetupRecord.Next() = 0;
     end;
+
+    trigger OnInstallAppPerCompany()
+    var
+        PIUpgradeTags: Codeunit "PI Upgrade Tags";
+    begin
+        PIUpgradeTags.SetAllPerCompanyTags();
+    end;
 }

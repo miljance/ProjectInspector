@@ -132,9 +132,10 @@ codeunit 50150 "PI Review Trigger Tests"
     var
         Job: Record Job;
     begin
-        // [GIVEN] An existing project in status Quote
+        // [GIVEN] An existing project with tasks in status Quote
         TestLibrary.UseMockDispatcher();
         TestLibrary.CreateProject(Job, Job.Status::Quote);
+        TestLibrary.CreateProjectTask(Job);
 
         // [WHEN] The status changes back to Planning
         Job.Validate(Status, Job.Status::Planning);
@@ -142,6 +143,22 @@ codeunit 50150 "PI Review Trigger Tests"
         // [THEN] The project is sent to Project Inspector
         Assert.AreEqual(1, MockTaskDispatcher.GetSendCount(), 'One review task must be sent.');
         Assert.AreEqual(Job."No.", MockTaskDispatcher.GetLastProjectNo(), 'Wrong project sent for review.');
+    end;
+
+    [Test]
+    procedure StatusChangedToPlanningWithoutTasksDoesNotSendReview()
+    var
+        Job: Record Job;
+    begin
+        // [GIVEN] A project Scribe Agent has just created: status Open (the default), no tasks yet
+        TestLibrary.UseMockDispatcher();
+        TestLibrary.CreateProject(Job, Job.Status::Open);
+
+        // [WHEN] Scribe Agent sets it to Planning before it builds the structure
+        Job.Validate(Status, Job.Status::Planning);
+
+        // [THEN] Nothing is reviewed yet: Scribe Agent submits it once the structure is built
+        Assert.AreEqual(0, MockTaskDispatcher.GetSendCount(), 'A project without tasks must not be reviewed yet.');
     end;
 
     [Test]

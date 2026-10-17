@@ -29,7 +29,8 @@ $Projects = @($Projects | ForEach-Object { $_ -split ',' } | ForEach-Object { $_
 # Expected results (README, "Expected review results"). Each pattern must match exactly one line of its section.
 $Expected = @{
     'FAB-01-IMP' = @{ Status = 'OPEN POINTS'; Total = '75,250'; Days = '44'; Findings = @()
-        Questions = @('003010.*PCR-23', 'App users.*PCR-24', 'Travel.*PCR-24', 'Go-live.*PCR-24') }
+        Questions = @('002000.*PCR-12', '003000.*PCR-12', '004000.*PCR-12', '005000.*PCR-12',
+            'App users.*PCR-24', 'Travel.*PCR-24', 'Go-live.*PCR-24', 'Discount.*PCR-24') }
     'TAI-01-IMP' = @{ Status = 'ERRORS'; Total = '20,025'; Days = '15'
         Findings = @('1,100.*1,250.*PCR-14', '375.*PCR-16'); Questions = @('003000.*PCR-12') }
     'PRO-01-WSH' = @{ Status = 'ERRORS'; Total = '3,150'; Days = '2'

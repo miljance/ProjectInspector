@@ -29,10 +29,11 @@ page 50108 "PI Review Result Card"
                 Caption = 'General';
 
                 field("Project No."; Rec."Project No.") { }
-                // Only the agent sets the decision, after the reviewer chose it in the task pane and continued.
+                // Only the reviewer chooses the decision; the agent session cannot change it (see the table).
                 field(Decision; Rec.Decision)
                 {
-                    Editable = IsAgentSession;
+                    Editable = not IsAgentSession;
+                    Style = Strong;
                 }
                 // The agent writes the report into this plain field. Visible only in the agent's session: the session is
                 // known when the page opens, a condition on the record is not.

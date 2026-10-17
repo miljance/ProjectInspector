@@ -25,10 +25,21 @@ codeunit 50114 "PI Review Decisions"
     /// </summary>
     procedure CarryOut(var Job: Record Job; Decision: Enum "PI Review Decision"; ReportText: Text)
     var
+        ResultText: Text;
+    begin
+        CarryOut(Job, Decision, ReportText, ResultText);
+    end;
+
+    /// <summary>
+    /// As CarryOut, and tells whether the decision was carried out as decided; ResultText says what happened.
+    /// </summary>
+    procedure CarryOut(var Job: Record Job; Decision: Enum "PI Review Decision"; ReportText: Text; var ResultText: Text) Done: Boolean
+    var
         PIReviewDecisionEntry: Record "PI Review Decision Entry";
     begin
         PIReviewDecisionEntry.Get(Register(Job, Decision));
-        ProcessDecision(PIReviewDecisionEntry, ReportText);
+        Done := ProcessDecision(PIReviewDecisionEntry, ReportText);
+        ResultText := PIReviewDecisionEntry.Result;
     end;
 
     procedure Register(var Job: Record Job; Decision: Enum "PI Review Decision"): Integer
@@ -47,7 +58,7 @@ codeunit 50114 "PI Review Decisions"
     /// <summary>
     /// Carries out one decision, using the latest report of the project. A processed decision is not carried out again.
     /// </summary>
-    procedure ProcessDecision(var PIReviewDecisionEntry: Record "PI Review Decision Entry"; ReportText: Text)
+    procedure ProcessDecision(var PIReviewDecisionEntry: Record "PI Review Decision Entry"; ReportText: Text) Done: Boolean
     var
         Job: Record Job;
         BusinessEvents: Codeunit "PI Business Events";
@@ -68,6 +79,7 @@ codeunit 50114 "PI Review Decisions"
                         if Job.Status = Job.Status::Planning then begin
                             Job.Validate(Status, Job.Status::Quote);
                             Job.Modify(true);
+                            Done := true;
                         end else
                             Result := StrSubstNo(NotInPlanningResultTxt, Job.Status);
                         BusinessEvents.RaiseReviewApproved(Job);
@@ -76,11 +88,13 @@ codeunit 50114 "PI Review Decisions"
                     begin
                         BusinessEvents.RaiseRejected(Job, ReportParser.GetFindingsText(ReportText));
                         Result := RejectedResultTxt;
+                        Done := true;
                     end;
                 PIReviewDecisionEntry.Decision::"Send Questions":
-                    if ClarificationMgt.SendQuestions(Job."No.", ReportText) then
-                        Result := QuestionsSentResultTxt
-                    else
+                    if ClarificationMgt.SendQuestions(Job."No.", ReportText) then begin
+                        Result := QuestionsSentResultTxt;
+                        Done := true;
+                    end else
                         Result := NoQuestionsResultTxt;
             end;
 

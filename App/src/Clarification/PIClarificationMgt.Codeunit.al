@@ -58,12 +58,14 @@ codeunit 50110 "PI Clarification Mgt."
     /// report and ProjectChangesNotApplied for answers not applied, and carries out the reviewer's decision from the
     /// card. Returns true when an event was raised.
     /// </summary>
-    procedure HandleReviewResult(ProjectNo: Code[20]; ReportText: Text; ResultDecision: Enum "PI Review Result Decision") Raised: Boolean
+    procedure HandleReviewResult(ProjectNo: Code[20]; ReportText: Text; ResultDecision: Enum "PI Review Result Decision"; var DecisionDone: Boolean; var DecisionResult: Text) Raised: Boolean
     var
         Job: Record Job;
         ReviewDecisions: Codeunit "PI Review Decisions";
         NotApplied: Text;
     begin
+        DecisionDone := false;
+        Clear(DecisionResult);
         if not FindProject(ProjectNo, ReportText, Job) then
             exit(false);
 
@@ -80,11 +82,11 @@ codeunit 50110 "PI Clarification Mgt."
 
         case ResultDecision of
             ResultDecision::Approve:
-                ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::Approve, ReportText);
+                DecisionDone := ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::Approve, ReportText, DecisionResult);
             ResultDecision::Reject:
-                ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::Reject, ReportText);
+                DecisionDone := ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::Reject, ReportText, DecisionResult);
             ResultDecision::"Send Questions":
-                ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::"Send Questions", ReportText);
+                DecisionDone := ReviewDecisions.CarryOut(Job, Enum::"PI Review Decision"::"Send Questions", ReportText, DecisionResult);
             else
                 exit;
         end;

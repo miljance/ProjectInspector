@@ -32,27 +32,10 @@ codeunit 50104 "PI Agent Task Execution" implements IAgentTaskExecution
         if AgentTaskUserInterventionRequestDetails.Type <> AgentTaskUserInterventionRequestDetails.Type::Assistance then
             exit;
 
+        // On the Review Result card the reviewer chooses the decision in the Decision field, not through the agent.
         if AgentTaskUserInterventionRequestDetails."Page ID" = Page::"PI Review Result Card" then
-            AddDecisions(Suggestions)
-        else
-            AddSuggestion(Suggestions, 'PI-CHECK-PROJECT', CheckProjectSummaryLbl, CheckProjectDescriptionLbl, CheckProjectInstructionsLbl, false);
-    end;
-
-    local procedure AddDecisions(var Suggestions: Record "Agent Task User Int Suggestion")
-    var
-        ApproveSummaryLbl: Label 'Approve project (status Quote)';
-        ApproveDescriptionLbl: Label 'The reviewer approves the project after the review, also when points are open.', Locked = true;
-        ApproveInstructionsLbl: Label 'The reviewer approves the project. On the Project Inspector Review Result page, set the Decision field to Approve if it is still empty. Do not change the report. Close the page and finish the task without a reply.', Locked = true;
-        RejectSummaryLbl: Label 'Reject project and notify';
-        RejectDescriptionLbl: Label 'The reviewer rejects the project; the team is notified with the findings.', Locked = true;
-        RejectInstructionsLbl: Label 'The reviewer rejects the project. On the Project Inspector Review Result page, set the Decision field to Reject if it is still empty. Do not change the report. Close the page and finish the task without a reply.', Locked = true;
-        QuestionsSummaryLbl: Label 'Send questions to the salesperson';
-        QuestionsDescriptionLbl: Label 'The reviewer sends the questions of the report to the salesperson in Teams.', Locked = true;
-        QuestionsInstructionsLbl: Label 'The reviewer sends the questions to the salesperson. On the Project Inspector Review Result page, set the Decision field to Send Questions if it is still empty. Do not change the report. Close the page and finish the task without a reply.', Locked = true;
-    begin
-        AddSuggestion(Suggestions, 'PI-APPROVE', ApproveSummaryLbl, ApproveDescriptionLbl, ApproveInstructionsLbl, true);
-        AddSuggestion(Suggestions, 'PI-REJECT', RejectSummaryLbl, RejectDescriptionLbl, RejectInstructionsLbl, true);
-        AddSuggestion(Suggestions, 'PI-QUESTIONS', QuestionsSummaryLbl, QuestionsDescriptionLbl, QuestionsInstructionsLbl, true);
+            exit;
+        AddSuggestion(Suggestions, 'PI-CHECK-PROJECT', CheckProjectSummaryLbl, CheckProjectDescriptionLbl, CheckProjectInstructionsLbl, false);
     end;
 
     local procedure AddSuggestion(var Suggestions: Record "Agent Task User Int Suggestion"; SuggestionCode: Code[20]; Summary: Text[100]; Description: Text[1024]; Instructions: Text[1024]; AlwaysIncluded: Boolean)

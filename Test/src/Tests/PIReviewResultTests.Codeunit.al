@@ -239,6 +239,134 @@ codeunit 50163 "PI Review Result Tests"
     end;
 
     [Test]
+    procedure DecisionNotChosenByAReviewerIsNotCarriedOut()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A result whose Decision was written without a reviewer choosing it (not validated, no Decided By)
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.ErrorsReport(Job."No."), Enum::"PI Review Result Decision"::" ");
+        PIReviewResult.Decision := PIReviewResult.Decision::Approve;
+        PIReviewResult.Modify();
+
+        // [WHEN] The report monitor runs
+        ReportMonitor.ProcessReviewResults();
+
+        // [THEN] Nothing is carried out: only a person decides
+        Job.Get(Job."No.");
+        Assert.AreEqual(Job.Status::Planning, Job.Status, 'A decision no reviewer chose must not set Quote.');
+        PIReviewResult.Get(PIReviewResult."Entry No.");
+        Assert.IsFalse(PIReviewResult.Processed, 'The result must wait for a reviewer.');
+        Assert.IsTrue(PIReviewResult.GetStatusText().Contains('reviewer'), 'The card must say a reviewer has to choose: ' + PIReviewResult.GetStatusText());
+    end;
+
+    [Test]
+    procedure DecisionOfTheAgentUserIsNotCarriedOut()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+        PIAgentSetup: Record "PI Agent Setup";
+    begin
+        // [GIVEN] A result whose Decision was set in the name of the Project Inspector agent user
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        PIAgentSetup.Init();
+        PIAgentSetup."User Security ID" := CreateGuid();
+        PIAgentSetup.Insert();
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.ErrorsReport(Job."No."), Enum::"PI Review Result Decision"::Approve);
+        PIReviewResult."Decided By" := PIAgentSetup."User Security ID";
+        PIReviewResult.Modify();
+
+        // [WHEN] The report monitor runs
+        ReportMonitor.ProcessReviewResults();
+
+        // [THEN] Nothing is carried out
+        Job.Get(Job."No.");
+        Assert.AreEqual(Job.Status::Planning, Job.Status, 'The agent must not be able to approve.');
+    end;
+
+    [Test]
+    procedure ReviewerDecisionIsRecorded()
+    var
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A recorded result
+        PIReviewResult.Report := 'Project X review: ERRORS';
+
+        // [WHEN] The reviewer chooses Reject on the card
+        PIReviewResult.Validate(Decision, PIReviewResult.Decision::Reject);
+
+        // [THEN] Who decided and when is kept
+        Assert.AreEqual(UserSecurityId(), PIReviewResult."Decided By", 'The reviewer must be recorded.');
+        Assert.AreNotEqual(0DT, PIReviewResult."Decided At", 'The time of the decision must be recorded.');
+    end;
+
+    [Test]
+    procedure FullQuestionsAreReadable()
+    var
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A report with eight questions, more than a business event parameter can carry (250 characters)
+        PIReviewResult.Report := 'Project FAB-01-IMP review: OPEN POINTS' + TestLibrary.LF() +
+            'Blocks: 4 | Total: 75,250 | Days: 44' + TestLibrary.LF() +
+            'Questions for the salesperson:' + TestLibrary.LF() +
+            '- Please confirm the quote number for block 002000 (PCR-12)' + TestLibrary.LF() +
+            '- Please confirm the quote number for block 003000 (PCR-12)' + TestLibrary.LF() +
+            '- Please confirm the quote number for block 004000 (PCR-12)' + TestLibrary.LF() +
+            '- Please confirm the quote number for block 005000 (PCR-12)' + TestLibrary.LF() +
+            '- App users: final number of users? Dispatchers included? (PCR-24)' + TestLibrary.LF() +
+            '- Travel: how many on-site trips during implementation? (PCR-24)' + TestLibrary.LF() +
+            '- Go-live: fixed date or target? (PCR-24)' + TestLibrary.LF() +
+            '- Discount: 10% on implementation mentioned. Approve? (PCR-24)' + TestLibrary.LF() +
+            'Waiting for answers from the salesperson.';
+
+        // [WHEN] The flow reads the questions through the reviewResults API
+        // [THEN] All eight come back, not cut at 250 characters
+        Assert.IsTrue(StrLen(PIReviewResult.GetQuestionsText()) > 250, 'The questions must not be cut.');
+        Assert.IsTrue(PIReviewResult.GetQuestionsText().Contains('Discount: 10% on implementation mentioned. Approve? (PCR-24)'), 'The last question must be there.');
+    end;
+
+    [Test]
+    procedure EventNamesItsReviewResult()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+        ClarificationEventSpy: Codeunit "PI Clarification Event Spy";
+    begin
+        // [GIVEN] The reviewer chose Send Questions
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.TwoQuestionsReport(Job."No."), Enum::"PI Review Result Decision"::"Send Questions");
+        BindSubscription(ClarificationEventSpy);
+
+        // [WHEN] The report monitor runs
+        ReportMonitor.ProcessReviewResults();
+
+        // [THEN] The business event names the review result, so the flow can read the full questions
+        UnbindSubscription(ClarificationEventSpy);
+        Assert.AreEqual(PIReviewResult.SystemId, ClarificationEventSpy.GetLastReviewResultId(), 'The event must carry the review result.');
+    end;
+
+    [Test]
+    procedure ResultSaysWhenApproveCouldNotSetQuote()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] The reviewer approved, but the project is no longer in Planning
+        TestLibrary.CreateProject(Job, Job.Status::Open);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.ErrorsReport(Job."No."), Enum::"PI Review Result Decision"::Approve);
+
+        // [WHEN] The report monitor runs
+        ReportMonitor.ProcessReviewResults();
+
+        // [THEN] The card says what really happened, not that the status was set to Quote
+        PIReviewResult.Get(PIReviewResult."Entry No.");
+        Assert.IsTrue(PIReviewResult.Result.Contains('not in Planning'), 'The result must say the status was not changed: ' + PIReviewResult.Result);
+        Job.Get(Job."No.");
+        Assert.AreEqual(Job.Status::Open, Job.Status, 'The status must not change.');
+    end;
+
+    [Test]
     procedure StoppedTaskClosesItsResult()
     var
         Job: Record Job;
@@ -371,10 +499,10 @@ codeunit 50163 "PI Review Result Tests"
         // [WHEN] The agent wrote the report and the reviewer has not decided yet
         PIReviewResult.Report := 'Project X review: OK';
         // [THEN] The card says that it waits for the decision
-        Assert.AreEqual('Waiting for your decision in the task pane.', PIReviewResult.GetStatusText(), 'Wrong status before the decision.');
+        Assert.AreEqual('Waiting for your decision: choose it in the Decision field and then Continue in the task pane.', PIReviewResult.GetStatusText(), 'Wrong status before the decision.');
 
-        // [WHEN] The decision is set but not carried out yet
-        PIReviewResult.Decision := PIReviewResult.Decision::Approve;
+        // [WHEN] The reviewer chose a decision that is not carried out yet
+        PIReviewResult.Validate(Decision, PIReviewResult.Decision::Approve);
         // [THEN] The card says what will happen and when
         Assert.AreEqual('Decision: Approve. Carried out after the task is finished.', PIReviewResult.GetStatusText(), 'Wrong status before Continue.');
 
@@ -411,8 +539,10 @@ codeunit 50163 "PI Review Result Tests"
         PIReviewResult.Init();
         PIReviewResult."Project No." := ProjectNo;
         PIReviewResult.Report := CopyStr(ReportText, 1, MaxStrLen(PIReviewResult.Report));
-        PIReviewResult.Decision := Decision;
         PIReviewResult.Insert(true);
+        // The reviewer chooses the decision on the card
+        if Decision <> Decision::" " then
+            PIReviewResult.Validate(Decision, Decision);
         PIReviewResult."Agent Task ID" := AgentTaskId;
         PIReviewResult.Modify();
     end;

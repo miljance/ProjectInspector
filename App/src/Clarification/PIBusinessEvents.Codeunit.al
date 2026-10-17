@@ -6,15 +6,20 @@ using System.Integration;
 /// <summary>
 /// Business events of Project Inspector. Power Automate subscribes with
 /// "When a business event occurs" (category Project Inspector).
+/// Text parameters are limited to 250 characters by the platform (AL0762) and are only a preview. Every event carries
+/// ReviewResultId: the flow reads the full texts with Get record on the reviewResults API (empty for the old reply path).
 /// </summary>
 codeunit 50111 "PI Business Events"
 {
     Access = Public;
 
+    var
+        ReviewContext: Codeunit "PI Review Context";
+
     procedure RaiseClarificationRequested(var Job: Record Job; ReviewStatus: Text; Questions: Text)
     begin
         ProjectClarificationRequested(
-            Job.SystemId, Job."No.", Job.Description, Job."Sell-to Customer Name",
+            Job.SystemId, ReviewContext.GetReviewResultId(), Job."No.", Job.Description, Job."Sell-to Customer Name",
             CopyStr(ReviewStatus, 1, 30), CopyStr(Questions, 1, 250), CopyStr(GetProjectUrl(Job), 1, 250));
         OnAfterClarificationRequested(Job."No.", Questions);
         OnAfterReviewEventRaised('ProjectClarificationRequested', Job."No.", Questions);
@@ -23,7 +28,7 @@ codeunit 50111 "PI Business Events"
     procedure RaiseReviewApproved(var Job: Record Job)
     begin
         ProjectReviewApproved(
-            Job.SystemId, Job."No.", Job.Description, Job."Sell-to Customer Name",
+            Job.SystemId, ReviewContext.GetReviewResultId(), Job."No.", Job.Description, Job."Sell-to Customer Name",
             CopyStr(Format(Job.Status), 1, 30), CopyStr(GetProjectUrl(Job), 1, 250));
         OnAfterReviewEventRaised('ProjectReviewApproved', Job."No.", Format(Job.Status));
     end;
@@ -31,7 +36,7 @@ codeunit 50111 "PI Business Events"
     procedure RaiseRejected(var Job: Record Job; Findings: Text)
     begin
         ProjectRejected(
-            Job.SystemId, Job."No.", Job.Description, Job."Sell-to Customer Name",
+            Job.SystemId, ReviewContext.GetReviewResultId(), Job."No.", Job.Description, Job."Sell-to Customer Name",
             CopyStr(Findings, 1, 250), CopyStr(GetProjectUrl(Job), 1, 250));
         OnAfterReviewEventRaised('ProjectRejected', Job."No.", Findings);
     end;
@@ -39,7 +44,7 @@ codeunit 50111 "PI Business Events"
     procedure RaiseChangesNotApplied(var Job: Record Job; NotApplied: Text)
     begin
         ProjectChangesNotApplied(
-            Job.SystemId, Job."No.", Job.Description, Job."Sell-to Customer Name",
+            Job.SystemId, ReviewContext.GetReviewResultId(), Job."No.", Job.Description, Job."Sell-to Customer Name",
             CopyStr(NotApplied, 1, 250), CopyStr(GetProjectUrl(Job), 1, 250));
         OnAfterReviewEventRaised('ProjectChangesNotApplied', Job."No.", NotApplied);
     end;
@@ -47,7 +52,7 @@ codeunit 50111 "PI Business Events"
     procedure RaiseCancelled(var Job: Record Job; Reason: Text)
     begin
         ProjectCancelled(
-            Job.SystemId, Job."No.", Job.Description, Job."Sell-to Customer Name",
+            Job.SystemId, ReviewContext.GetReviewResultId(), Job."No.", Job.Description, Job."Sell-to Customer Name",
             CopyStr(Reason, 1, 250), CopyStr(GetProjectUrl(Job), 1, 250));
         OnAfterReviewEventRaised('ProjectCancelled', Job."No.", Reason);
     end;
@@ -58,7 +63,7 @@ codeunit 50111 "PI Business Events"
     /// Business event parameters are limited to 250 characters, longer questions are cut off.
     /// </summary>
     [ExternalBusinessEvent('ProjectClarificationRequested', 'Project clarification requested', 'Project Inspector reviewed a project and has questions for the salesperson.', EventCategory::"Project Inspector")]
-    local procedure ProjectClarificationRequested(ProjectId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; ReviewStatus: Text[30]; Questions: Text[250]; ProjectUrl: Text[250])
+    local procedure ProjectClarificationRequested(ProjectId: Guid; ReviewResultId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; ReviewStatus: Text[30]; Questions: Text[250]; ProjectUrl: Text[250])
     begin
     end;
 
@@ -66,7 +71,7 @@ codeunit 50111 "PI Business Events"
     /// The reviewer approved the project; it is now in status Quote.
     /// </summary>
     [ExternalBusinessEvent('ProjectReviewApproved', 'Project review approved', 'The reviewer approved the project after the Project Inspector review; it is now in status Quote.', EventCategory::"Project Inspector")]
-    local procedure ProjectReviewApproved(ProjectId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; NewStatus: Text[30]; ProjectUrl: Text[250])
+    local procedure ProjectReviewApproved(ProjectId: Guid; ReviewResultId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; NewStatus: Text[30]; ProjectUrl: Text[250])
     begin
     end;
 
@@ -74,7 +79,7 @@ codeunit 50111 "PI Business Events"
     /// The reviewer rejected the project. Findings holds one finding per line (at most 250 characters).
     /// </summary>
     [ExternalBusinessEvent('ProjectRejected', 'Project rejected', 'The reviewer rejected the project after the Project Inspector review.', EventCategory::"Project Inspector")]
-    local procedure ProjectRejected(ProjectId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; Findings: Text[250]; ProjectUrl: Text[250])
+    local procedure ProjectRejected(ProjectId: Guid; ReviewResultId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; Findings: Text[250]; ProjectUrl: Text[250])
     begin
     end;
 
@@ -82,7 +87,7 @@ codeunit 50111 "PI Business Events"
     /// Project Inspector could not apply some of the salesperson's answers. NotApplied holds one point per line with the reason.
     /// </summary>
     [ExternalBusinessEvent('ProjectChangesNotApplied', 'Project changes not applied', 'Project Inspector could not apply some answers of the salesperson; the salesperson has to change them.', EventCategory::"Project Inspector")]
-    local procedure ProjectChangesNotApplied(ProjectId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; NotApplied: Text[250]; ProjectUrl: Text[250])
+    local procedure ProjectChangesNotApplied(ProjectId: Guid; ReviewResultId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; NotApplied: Text[250]; ProjectUrl: Text[250])
     begin
     end;
 
@@ -90,7 +95,7 @@ codeunit 50111 "PI Business Events"
     /// The salesperson cancelled the project in an answer; Project Inspector stopped.
     /// </summary>
     [ExternalBusinessEvent('ProjectCancelled', 'Project cancelled', 'The salesperson cancelled the project; Project Inspector stopped the review.', EventCategory::"Project Inspector")]
-    local procedure ProjectCancelled(ProjectId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; Reason: Text[250]; ProjectUrl: Text[250])
+    local procedure ProjectCancelled(ProjectId: Guid; ReviewResultId: Guid; ProjectNo: Code[20]; ProjectDescription: Text[100]; CustomerName: Text[100]; Reason: Text[250]; ProjectUrl: Text[250])
     begin
     end;
 

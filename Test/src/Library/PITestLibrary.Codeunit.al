@@ -33,6 +33,21 @@ codeunit 50162 "PI Test Library"
         Job.Insert(false);
     end;
 
+    /// <summary>
+    /// Gives the project one posting task, like a project whose structure was built.
+    /// </summary>
+    procedure CreateProjectTask(var Job: Record Job)
+    var
+        JobTask: Record "Job Task";
+    begin
+        JobTask.Init();
+        JobTask."Job No." := Job."No.";
+        JobTask."Job Task No." := '002010';
+        JobTask.Description := 'SERVICES';
+        JobTask."Job Task Type" := JobTask."Job Task Type"::Posting;
+        JobTask.Insert(false);
+    end;
+
     procedure NewProjectNo(): Code[20]
     begin
         exit(CopyStr('PIT-' + DelChr(Format(CreateGuid()), '=', '{}-'), 1, 20));
