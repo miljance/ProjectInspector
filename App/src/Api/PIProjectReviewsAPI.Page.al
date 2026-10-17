@@ -73,4 +73,24 @@ page 50102 "PI Project Reviews API"
         ActionContext.AddEntityKey(Rec.FieldNo(SystemId), Rec.SystemId);
         ActionContext.SetResultCode(WebServiceActionResultCode::Updated);
     end;
+
+    /// <summary>
+    /// Creates all tasks and planning lines of a new project in one call; either everything is created or nothing.
+    /// tasksJson: [{"jobTaskNo":"002010","description":"SERVICES","jobTaskType":"Posting"}, ...] in the order of the
+    /// task list; Begin-Total and End-Total tasks are indented and totaled automatically.
+    /// linesJson: [{"jobTaskNo":"002010","type":"Resource","no":"R-CONSULT","description":"Setup","quantity":18}, ...];
+    /// line numbers and prices are filled by Business Central. Call it before Submit for Review.
+    /// </summary>
+    [ServiceEnabled]
+    procedure BuildProjectStructure(var ActionContext: WebServiceActionContext; tasksJson: Text; linesJson: Text)
+    var
+        ProjectStructure: Codeunit "PI Project Structure";
+    begin
+        ProjectStructure.Build(Rec, tasksJson, linesJson);
+
+        ActionContext.SetObjectType(ObjectType::Page);
+        ActionContext.SetObjectId(Page::"PI Project Reviews API");
+        ActionContext.AddEntityKey(Rec.FieldNo(SystemId), Rec.SystemId);
+        ActionContext.SetResultCode(WebServiceActionResultCode::Updated);
+    end;
 }
