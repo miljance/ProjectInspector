@@ -17,7 +17,7 @@ codeunit 50104 "PI Agent Task Execution" implements IAgentTaskExecution
     end;
 
     /// <summary>
-    /// The reviewer's choices when the agent asks for assistance on the Review Result card (step 9 of the instructions):
+    /// The reviewer's choices when the agent asks for assistance on the Review Result card (step 8 of the instructions):
     /// approve, reject or send the questions, as buttons in the task pane next to the Decision field and actions on the
     /// card. On any other page the agent is stuck, and decisions without the report would mislead, so only the project
     /// check is offered there. The outgoing message page cannot be extended and shows no suggestions (checked on BC 29),

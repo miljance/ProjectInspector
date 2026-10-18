@@ -6,9 +6,9 @@ using Microsoft.Projects.Project.Planning;
 
 /// <summary>
 /// For the Project Inspector agent, next to D365 READ: it applies the salesperson's answers to the project
-/// (dates, quantities, new planning lines, quote numbers, Open Points) in step 8 of its instructions.
+/// (dates, quantities, new planning lines and TRAVEL tasks, quote numbers, Open Points) under When answers arrive.
 /// The status is changed by PI Report Monitor after the reviewer's decision, not by the agent.
-/// The agent records the review report on the Review Result card (step 9).
+/// The agent records the review report on the Review Result card (step 8).
 /// </summary>
 permissionset 50101 "PI Agent Edit"
 {

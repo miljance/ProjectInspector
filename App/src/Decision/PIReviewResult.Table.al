@@ -4,7 +4,7 @@ using Microsoft.Projects.Project.Job;
 using System.Agents;
 
 /// <summary>
-/// The review report of one round (step 9 of the instructions). The agent records it on the Review Result card and asks
+/// The review report of one round (step 8 of the instructions). The agent records it on the Review Result card and asks
 /// for assistance there, so the review opens this card: the reviewer reads the report and sets the Decision, and the
 /// agent ends the task without a reply. The outgoing message page of Business Central cannot be extended
 /// (Extensible = false), so a decision field or action is only possible here.

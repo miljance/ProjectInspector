@@ -75,7 +75,7 @@ codeunit 50103 "PI Agent Setup"
     end;
 
     /// <summary>
-    /// D365 READ for the review, and PI Agent Edit to apply the salesperson's answers to the project (step 8).
+    /// D365 READ for the review, and PI Agent Edit to apply the salesperson's answers to the project (When answers arrive).
     /// </summary>
     procedure GetDefaultAccessControls(var TempAccessControlBuffer: Record "Access Control Buffer" temporary)
     var

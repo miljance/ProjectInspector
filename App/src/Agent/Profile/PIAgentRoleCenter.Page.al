@@ -9,7 +9,7 @@ using Microsoft.Sales.Customer;
 /// lists every page the instructions start from:
 /// - Projects: the project, its tasks and planning lines (steps 1 to 3, 8) and the duplicate check (step 5).
 /// - Customers: the Blocked check (step 4). The agent cannot reach the customer from the project card, so it comes here.
-/// - Project Inspector Review Results: the report and the reviewer's decision (step 9).
+/// - Project Inspector Review Results: the report and the reviewer's decision (step 8).
 /// </summary>
 page 50109 "PI Agent Role Center"
 {

@@ -3,7 +3,7 @@ namespace Contoso.ProjectInspector;
 using System.Agents;
 
 /// <summary>
-/// Where Project Inspector records the review report of each round (step 9 of its instructions).
+/// Where Project Inspector records the review report of each round (step 8 of its instructions).
 /// The agent opens it from its home page and adds a new result on the card. In the agent's session the list shows
 /// only results that were not carried out yet, so the agent never reopens a finished result of an earlier round.
 /// </summary>

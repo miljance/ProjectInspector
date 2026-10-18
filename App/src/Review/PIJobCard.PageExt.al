@@ -7,7 +7,7 @@ pageextension 50100 "PI Job Card" extends "Job Card"
 {
     layout
     {
-        // The agent edits the plain field (step 8 removes settled points). People get a full-width editor in its own
+        // The agent edits the plain field (it adds "Answered: ..." to settled points). People get a full-width editor in its own
         // FastTab, one point per line, like the outgoing message editor.
         addlast(General)
         {

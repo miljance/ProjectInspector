@@ -4,7 +4,7 @@ A Business Central agent, built with the AL Agent SDK, that reviews every new cu
 
 Built for the Directions EMEA 2026 session **"One Voice Note, a Complete Project. AI Agents at Work in Business Central"** (29 Oct 2026). The agent was designed and tested in Agent Designer, exported (`App/.resources/Instructions/ProjectInspector-agent-export.xml`) and moved into this app with the AL **Agent** project template.
 
-**Status:** version 2.27 compiles against BC 29 and all 112 tests pass in a BC 29 sandbox. The full FAB-01-IMP round ran end to end on 18 Oct 2026: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
+**Status:** version 2.27 compiles against BC 29 and all 112 tests pass in a BC 29 sandbox. Two evaluation runs in a row matched all six demo projects (18 Oct 2026, about 40 Copilot credits per review). The full FAB-01-IMP round ran end to end: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
 
 All demo content is fictional (CRONUS US style). **Never add real customer, company or product names.**
 
@@ -12,17 +12,17 @@ All demo content is fictional (CRONUS US style). **Never add real customer, comp
 
 | Part | Presenter | Tool | Agent |
 | --- | --- | --- | --- |
-| Voice note / Teams transcript → project in BC | Nikola Pančić | Copilot Studio + BC MCP server | **Scribe Agent** |
+| Teams call transcript → project in BC | Nikola Pančić | Copilot Studio + BC MCP server | **Scribe Agent** |
 | Review of the new project, decision, answers from the salesperson | Miljan Milosavljević | BC Agent SDK (this repo) | **Project Inspector** |
 
-1. The salesperson records a voice note about a customer call.
+1. The salesperson holds a Teams call with the customer; Scribe Agent gets the meeting transcript (a voice note works too).
 2. Scribe Agent creates the project in status Planning through the BC MCP server (project, then `buildProjectStructure` for all tasks and planning lines) and calls `submitForReview`.
 3. **Project Inspector** reviews the project against the rules PCR-01..PCR-31 and records its report on the **Project Inspector Review Result** page.
-4. The project engineer reads the report there (and may edit it), chooses **Approve**, **Reject** or **Send Questions** in the **Decision** field on that page and then **Continue** in the task pane.
+4. The project engineer reads the report there (and may edit it). Business Central has already proposed **Approve**, **Reject** or **Send Questions** in the **Decision** field; the engineer keeps or changes it and chooses **Continue** in the task pane.
 5. Business Central carries out the decision: status Quote, or a business event that Power Automate posts to Teams.
 6. The salesperson's answer comes back through the `clarificationAnswers` API; Project Inspector applies it to the project and the next round starts at step 3.
 
-The demos are recorded, not live. Environment: BC 29 sandbox (US localization, currency USD); the demo data sits in its own company. Scribe Agent uses the OCPF APIs v3 and the MCP configuration `SCRIBE-AGENT`. The demo data and the rules document `Contoso Project Templates and Policies.md` are kept with the session material, not in this repo.
+The demos are recorded, not live. Environment: BC 29 sandbox (US localization, currency USD); the demo data sits in its own company. Scribe Agent uses the OCPF APIs v3 and the MCP configuration `SCRIBE-AGENT`. The demo data, the demo answer for the Teams card and the rules document `contoso_project_templates_and_policies.md` (also the knowledge source of Scribe Agent on SharePoint) are kept with the session material, not in this repo. The rules document is for people and Scribe; the agent instructions here turn its review checks into steps and change only with a new version and an evaluation.
 
 ## How it works
 
@@ -78,7 +78,7 @@ Power Automate posts the answer to `clarificationAnswers`; `PI Review Trigger`.R
 All flows post to the same Teams channel.
 
 1. **Questions:** When a business event occurs (*ProjectClarificationRequested*) → **Get record** on `reviewResults` with id = ReviewResultId → Teams adaptive card to the salesperson with `questions` from that record and an answer field → Create record on `clarificationAnswers` with `projectNo`, `answer`, `answeredBy`.
-2. **Approved, rejected, changes not applied, cancelled:** one flow per event, each When a business event occurs → Get record on `reviewResults` (for rejected and not applied: `findings`, `notApplied`) → Post message in a chat or channel. Multi-line texts: `replace(body('Get_record')?['findings'], decodeUriComponent('%0A'), '<br>')`.
+2. **Approved, rejected, changes not applied, cancelled:** one flow per event, each When a business event occurs → Get record on `reviewResults` (for rejected and not applied: `findings`, `notApplied`) → Post message in a chat or channel. Multi-line texts, with the Get record step named *Get review result*: `replace(body('Get_review_result')?['findings'], decodeUriComponent('%0A'), '<br>')`. The trigger reads the event fields with `triggerBody()?['ReviewResultId']` and so on, which also works when the designer has not refreshed the event's fields.
 
 ### APIs
 
@@ -112,7 +112,7 @@ To load the demo data, apply the RapidStart packages `SCRIBE-DEMO`, `SCRIBE-PRJ-
 
 ## Tests
 
-The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher replaces the agent task dispatcher with `PI Mock Task Dispatcher` through `PI Dispatcher Provider` (it also answers whether a task is finished), and `PI Clarification Event Spy` records every business event.
+The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher replaces the agent task dispatcher with `PI Mock Task Dispatcher` through `PI Dispatcher Provider` (it also answers whether a task is finished, stopped or waiting for the reviewer), and `PI Clarification Event Spy` records every business event.
 
 1. Make sure the sandbox has **Library Assert** and **Test Runner** installed.
 2. Publish **App**, then **Test**. When the `PI ITask Dispatcher` interface gets a new method, publish a Test app with the new mock method first, then App, then the full Test app.
@@ -126,7 +126,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50153 PI Clarification Event Tests | questions event, project No. fallback |
 | 50154 PI Agent KPI Tests | the summary page shows which instructions version the agent has |
 | 50155 PI Report Monitor Tests | each sent reply is read once and logged, a stopped monitor job is repaired and retries broken runs |
-| 50156 PI Report Event Tests | approve, reject, questions, not applied and cancelled from a report with a Decision line |
+| 50156 PI Report Event Tests | approve, reject, questions, not applied and cancelled from a sent report with a Decision line (the earlier reply format, still read by the monitor) |
 | 50157 PI Review Decision Tests | each decision is logged and carried out once |
 | 50158 PI Project Structure Tests | `buildProjectStructure`: indentation, totaling (also Total tasks), line numbers, card prices, unit of measure, project currency, required quantity, date format, status Planning, refused input |
 | 50159 PI Suggestion Tests | no decision buttons on the result card (the reviewer uses the Decision field), project check elsewhere, the agent's own profile |
@@ -135,7 +135,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50165 PI Planning Lines Page Tests | Project Planning Lines show Line Discount Amount |
 | 50166 PI Review Checks Tests | workshop tasks whose lines name no date are listed (PCR-22), also without a Standard block; other blocks are not checked |
 
-Not covered by unit tests, because they need an agent session or a real agent: `PI Agent Task Dispatcher` (Tasks AL API, task status), the agent-session parts of the result pages (only open results, Decision editable only for the agent), and the agent's behaviour itself. Check those in the sandbox.
+Not covered by unit tests, because they need an agent session or a real agent: `PI Agent Task Dispatcher` (Tasks AL API, task status), the agent-session parts of the result pages (only open results, Decision not editable for the agent), and the agent's behaviour itself. Check those in the sandbox.
 
 Write tests first, with Given/When/Then comments and one behaviour per test. Change a test only when it is wrong about BC behaviour. Example: `Job.Validate(Status)` on an unsaved project always fails in the base application (`Status - OnValidate` calls `Modify`), so that case calls `PI Review Trigger`.OnAfterStatusValidated directly.
 
@@ -156,14 +156,16 @@ They were tuned on the six demo projects below, so after a change run all six ag
 | WWI-01-IMP | ERRORS | 19,500 | 10 | Possible duplicate WWI-02-IMP (PCR-03) | 50 hours contingent (PCR-23) |
 | WWI-02-IMP | ERRORS | 12,500 | 10 | Possible duplicate WWI-01-IMP (PCR-03) | Quote number for block 002000 (PCR-12); split 10 days in 002010 (PCR-23) |
 
+The second round of FAB-01-IMP is checked by hand: with the demo answer (quote numbers Q-26-0460 to 0463, 27 users, two trips, fixed go-live 31 March 2027, the 10 % discount) the report shows Total 77,222, TRAVEL task 003040, every answer under Changes applied or Not applied, and Business Central proposes Reject because of the discount.
+
 FAB-01-IMP is the version Scribe Agent builds from the Teams meeting transcript: Sara splits the 38 days by phase (four lines in 003010), the call gives no quote numbers (blocks `Q-NEW-1` … `Q-NEW-4`), and the Open Points field holds the quote-number line plus users, travel, go-live and the 10 % discount Laura asked for. The RapidStart package `SCRIBE-PRJ-HEADERS` fills the field, so install the app before importing the demo data. The quote-number line is asked by step 2g, block by block. The implementation block has no TRAVEL task until the trips are agreed; when the salesperson answers, the agent adds the task (*When answers arrive*).
 
-Version 2.21 (instructions rewritten so that every rule appears once) matches all six (18 Oct 2026, one evaluation run). Versions 2.13 to 2.20 got 3 to 5 of 6 per run, each missing a different check. The evaluation also checks that every line of the Open Points field is a question in the first report. Tests change the demo data (answers are applied to the projects), so run `tools/Reset-DemoData.ps1 -Tenant <tenant id> -PackageFolder <folder with the .rapidstart files>` before an evaluation or a recording: it deletes the six projects and imports the packages again. RapidStart writes Unit Price and Line Discount % before Business Central takes the price from the resource card, so after applying `SCRIBE-PRJ-LINES` the script sets both again on the planning lines (TAI-01-IMP: 12 × 1,100 and 10 % on 3 × 1,250), otherwise TAI shows 22,200 and no discount.
+Version 2.27 matched all six in two runs in a row (18 Oct 2026); a first review costs about 30 to 44 Copilot credits. Versions 2.13 to 2.20 got 3 to 5 of 6 per run, each missing a different check, until 2.21 rewrote the instructions and Business Central took over the arithmetic and the workshop-date check. The evaluation also checks that every line of the Open Points field is a question in the first report. Tests change the demo data (answers are applied to the projects), so run `tools/Reset-DemoData.ps1 -Tenant <tenant id> -PackageFolder <folder with the .rapidstart files>` before an evaluation or a recording: it deletes the six projects and imports the packages again. RapidStart writes Unit Price and Line Discount % before Business Central takes the price from the resource card, so after applying `SCRIBE-PRJ-LINES` the script sets both again on the planning lines (TAI-01-IMP: 12 × 1,100 and 10 % on 3 × 1,250), otherwise TAI shows 22,200 and no discount.
 
 ## Design decisions
 
 - **The agent changes data only for the salesperson's answers** (PI Agent Edit) and to record its review result. Status changes, decisions and business events happen in AL code (`PI Report Monitor`), never by the agent.
-- **One approval per round.** The engineer decides once, on the Review Result card, with the options in the task pane. Tried and dropped: decision actions on the Project Card (decisions belong to the agent's options, like the Payables Agent's), a help request followed by a review of the reply (two steps), options on the review of an outgoing message (Business Central shows none there), and editing a Decision line in the reply (Sales Order Agent style).
+- **One approval per round.** The engineer decides once, in the Decision field of the Review Result card, and continues in the task pane. Tried and dropped: decision actions on the Project Card (decisions belong to the agent's options, like the Payables Agent's), a help request followed by a review of the reply (two steps), options on the review of an outgoing message (Business Central shows none there), and editing a Decision line in the reply (Sales Order Agent style).
 - **Business Central proposes, a person decides.** The Decision field is never empty: Business Central proposes it from the report, the reviewer keeps or changes it and continues. A decision the agent user set, or a proposal of a task that never asked the reviewer, is never carried out.
 - **The agent never replies.** Like the Payables Agent, it limits its interactions to asking for assistance; the report lives on our page, where we control the fields.
 - **Nothing happens before Continue.** A decision counts only after the agent task that recorded it has completed.
@@ -183,7 +185,6 @@ Checked against the System Application source and in the sandbox:
 - Opening a page is no proof that a person looked at it: during a review Business Central opens the agent's page in a session that is not the agent's (UserSecurityId `{00000000-0000-0000-0000-000000000001}`). `Agent Task`."Needs Attention" shows that the task waits for a person.
 - A recurring job queue entry goes to Error when a publish breaks the run that is just running, and stays there: give it retries and restart it on upgrade.
 - Inserting a Job Planning Line needs indirect modify on `Job Entry No.` (1015); without it the agent gets a permission request it cannot get past.
-
 - A message is added to an existing task with `Agent Task Message Builder`.SetAgentTask(...).Create(true), which also sets the task to Ready when possible. Task messages default to *requires review*; the dispatcher turns that off.
 - A task keeps the instructions it was created with; a stopped task never runs again.
 - `AnalyzeAgentTaskMessage` is called only for a task's input messages, not for the agent's replies.
@@ -197,10 +198,11 @@ Checked against the System Application source and in the sandbox:
 
 ## Next steps
 
-1. **Evaluation twice before the session.** Re-import the demo data and run `tools/Run-ReviewEval.ps1` two times (12 runs, Copilot credits): one run cannot tell a fix from luck. The script prints the Copilot credits of every review task and the total.
+1. **Evaluation once more before the session**, on the final demo data: `tools/Reset-DemoData.ps1`, then `tools/Run-ReviewEval.ps1` (6 runs, about 240 Copilot credits). The script prints the credits of every review task; a task that just finished can still show 0.
 2. **Power Automate.** Test all five flows (questions, approved, rejected, changes not applied, cancelled); the questions loop worked end to end on 18 Oct 2026.
 3. **Job queue before the demo.** Do not publish after the last check: Job Queue Entries, *Project Inspector: send review decisions and notifications* must be Ready.
 4. **Before the session.** The app is published from VS Code (Dev); upload it as a per-tenant extension so a sandbox update does not remove it.
+5. **After the session.** Check prices against the resource and item cards instead of the rate card in the instructions, keep other lists (contingent sizes, task types) in a setup table, and let an administrator edit instructions in Business Central with drafts, an evaluation from Business Central as the gate, activation and rollback.
 
 ## Repository layout
 
@@ -213,10 +215,10 @@ ProjectInspector/
 │   │   └── ProjectInspector-agent-export.xml
 │   └── src/
 │       ├── Agent/                    agent registration, setup, profile + home page, KPI, install/upgrade, task execution
-│       ├── Review/                   review triggers, dispatcher, Open Points field, Project Card action
-│       ├── Clarification/            report parser, business events, report monitor, answers table and page
+│       ├── Review/                   review triggers, dispatcher, Project Card (Open Points, Planned Days, Workshop Dates Missing), review checks
+│       ├── Clarification/            report parser, business events, report monitor and its job, answers table and page
 │       ├── Decision/                 Review Result table and pages, decision log
-│       ├── Api/                      projectReviews (buildProjectStructure), clarificationAnswers, agentStatuses, reviewReports
+│       ├── Api/                      projectReviews (buildProjectStructure), clarificationAnswers, agentStatuses, reviewReports, reviewResults
 │       └── Permissions/
 ├── Test/                             test app (50150..50199)
 │   └── src/
