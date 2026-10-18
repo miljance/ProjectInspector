@@ -20,6 +20,29 @@ codeunit 50117 "PI Upgrade Tags"
         exit('PI-AGENT-PROFILE-20261017');
     end;
 
+    procedure GetAgentCompaniesTag(): Code[250]
+    begin
+        exit('PI-AGENT-COMPANIES-20261018');
+    end;
+
+    procedure GetAgentSetupCompanyTag(): Code[250]
+    begin
+        exit('PI-AGENT-SETUP-COMPANY-20261018');
+    end;
+
+    /// <summary>
+    /// A new installation has no agent yet: its permissions are given in the company where it is activated.
+    /// </summary>
+    procedure SetAllPerDatabaseTags()
+    var
+        UpgradeTag: Codeunit "Upgrade Tag";
+    begin
+        if not UpgradeTag.HasUpgradeTag(GetAgentCompaniesTag()) then
+            UpgradeTag.SetUpgradeTag(GetAgentCompaniesTag());
+        if not UpgradeTag.HasUpgradeTag(GetAgentSetupCompanyTag()) then
+            UpgradeTag.SetUpgradeTag(GetAgentSetupCompanyTag());
+    end;
+
     /// <summary>
     /// A new installation needs none of the one-time steps: results start with their task, the agent starts with its
     /// profile.
@@ -39,5 +62,12 @@ codeunit 50117 "PI Upgrade Tags"
     begin
         PerCompanyUpgradeTags.Add(GetLinkResultsToTasksTag());
         PerCompanyUpgradeTags.Add(GetAgentProfileTag());
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Upgrade Tag", OnGetPerDatabaseUpgradeTags, '', false, false)]
+    local procedure RegisterPerDatabaseTags(var PerDatabaseUpgradeTags: List of [Code[250]])
+    begin
+        PerDatabaseUpgradeTags.Add(GetAgentCompaniesTag());
+        PerDatabaseUpgradeTags.Add(GetAgentSetupCompanyTag());
     end;
 }

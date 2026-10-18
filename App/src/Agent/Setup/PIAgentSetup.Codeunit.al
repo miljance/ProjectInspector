@@ -88,18 +88,6 @@ codeunit 50103 "PI Agent Setup"
         AddAccessControl(TempAccessControlBuffer, CurrentModuleInfo.Id(), AgentEditPermissionSetTok);
     end;
 
-    /// <summary>
-    /// Gives an existing agent the current default permissions. Called on upgrade, because agents created
-    /// before version 2.0 only had D365 READ.
-    /// </summary>
-    procedure UpdateAccessControls(AgentUserSecurityId: Guid)
-    var
-        TempAccessControlBuffer: Record "Access Control Buffer" temporary;
-    begin
-        GetDefaultAccessControls(TempAccessControlBuffer);
-        Agent.UpdateAccessControl(AgentUserSecurityId, TempAccessControlBuffer);
-    end;
-
     local procedure AddAccessControl(var TempAccessControlBuffer: Record "Access Control Buffer" temporary; AppId: Guid; RoleId: Code[20])
     begin
         TempAccessControlBuffer.Init();
@@ -131,13 +119,14 @@ codeunit 50103 "PI Agent Setup"
     end;
 
     /// <summary>
-    /// Returns the active Project Inspector agent, if there is one.
+    /// Returns the active Project Inspector agent of the current company, if there is one.
     /// </summary>
     procedure TryGetActiveAgent(var AgentUserSecurityId: Guid): Boolean
     var
         PIAgentSetupRecord: Record "PI Agent Setup";
     begin
         Clear(AgentUserSecurityId);
+        PIAgentSetupRecord.SetRange("Company Name", CompanyName());
         if not PIAgentSetupRecord.FindSet() then
             exit(false);
 
@@ -210,6 +199,7 @@ codeunit 50103 "PI Agent Setup"
 
         PIAgentSetupRecord.Init();
         PIAgentSetupRecord."User Security ID" := TempPIAgentSetup."User Security ID";
+        PIAgentSetupRecord."Company Name" := CopyStr(CompanyName(), 1, MaxStrLen(PIAgentSetupRecord."Company Name"));
         PIAgentSetupRecord.Insert();
     end;
 

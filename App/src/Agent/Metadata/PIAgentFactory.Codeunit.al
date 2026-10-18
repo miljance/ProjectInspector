@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Security.AccessControl;
 
 /// <summary>
-/// Creates Project Inspector agents. Only one Project Inspector can exist.
+/// Creates Project Inspector agents: one per company, like the Sales Order Agent.
 /// </summary>
 codeunit 50100 "PI Agent Factory" implements IAgentFactory
 {
@@ -29,7 +29,8 @@ codeunit 50100 "PI Agent Factory" implements IAgentFactory
     var
         PIAgentSetupRecord: Record "PI Agent Setup";
     begin
-        // One Project Inspector per environment: the review triggers send every project to this agent.
+        // One Project Inspector per company: the review triggers send the company's projects to its own agent.
+        PIAgentSetupRecord.SetRange("Company Name", CompanyName());
         exit(PIAgentSetupRecord.IsEmpty());
     end;
 

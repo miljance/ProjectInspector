@@ -4,7 +4,7 @@ A Business Central agent, built with the AL Agent SDK, that reviews every new cu
 
 Built for the Directions EMEA 2026 session **"One Voice Note, a Complete Project. AI Agents at Work in Business Central"** (29 Oct 2026). The agent was designed and tested in Agent Designer, exported (`App/.resources/Instructions/ProjectInspector-agent-export.xml`) and moved into this app with the AL **Agent** project template.
 
-**Status:** version 2.27 compiles against BC 29 and all 112 tests pass in a BC 29 sandbox. Two evaluation runs in a row matched all six demo projects (18 Oct 2026, about 40 Copilot credits per review). The full FAB-01-IMP round ran end to end: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
+**Status:** version 2.30 compiles against BC 29 and all 114 tests pass in a BC 29 sandbox. Two evaluation runs in a row matched all six demo projects (18 Oct 2026, about 40 Copilot credits per review). The full FAB-01-IMP round ran end to end: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
 
 All demo content is fictional (CRONUS US style). **Never add real customer, company or product names.**
 
@@ -103,7 +103,7 @@ Base URL: `/api/contoso/projectInspector/v1.0/companies({companyId})/`
 1. In `App` and `Test`, copy `.vscode/launch.example.json` to `.vscode/launch.json` and set your tenant and sandbox. `launch.json` is not in the repo.
 2. Run *Download symbols* in both folders, then publish **App** (F5 in the App folder).
 3. **Copilot & agent capabilities**: enable *Project Inspector*.
-4. Role Center: choose the Project Inspector avatar with **+**, set it up, add the users who may send it tasks (project managers, the Copilot Studio and Power Automate connection users) and activate it. The agent gets its profile and permissions from the app.
+4. Role Center: choose the Project Inspector avatar with **+**, set it up, add the users who may send it tasks (project managers, the Copilot Studio and Power Automate connection users) and activate it. The agent gets its profile and permissions from the app, in this company only. Every company activates its own Project Inspector (like the Sales Order Agent); its user is named after the company.
 5. If the environment also has a Project Inspector built in Agent Designer, deactivate it, so there is only one.
 6. Assign the permission set **PI Project Inspector** to the users and connections from step 4.
 7. Open a project in Planning and choose **Send to Project Inspector**. Check **Job Queue Entries**: *Project Inspector: send review decisions and notifications* must be Ready.
@@ -134,6 +134,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50164 PI Planned Days Tests | Planned Days on the Project Card sum only the resource lines planned in days |
 | 50165 PI Planning Lines Page Tests | Project Planning Lines show Line Discount Amount |
 | 50166 PI Review Checks Tests | workshop tasks whose lines name no date are listed (PCR-22), also without a Standard block; other blocks are not checked |
+| 50167 PI Agent Company Tests | each company can activate its own agent, a second one in the same company is not offered |
 
 Not covered by unit tests, because they need an agent session or a real agent: `PI Agent Task Dispatcher` (Tasks AL API, task status), the agent-session parts of the result pages (only open results, Decision not editable for the agent), and the agent's behaviour itself. Check those in the sandbox.
 
@@ -170,6 +171,7 @@ Version 2.27 matched all six in two runs in a row (18 Oct 2026); a first review 
 - **The agent never replies.** Like the Payables Agent, it limits its interactions to asking for assistance; the report lives on our page, where we control the fields.
 - **Nothing happens before Continue.** A decision counts only after the agent task that recorded it has completed.
 - **No trigger on project insert**: tasks and planning lines do not exist yet. Scribe Agent calls `submitForReview` when it is done (PCR-27).
+- **One agent per company**, like the Sales Order Agent: `PI Agent Setup` stores the company where the agent was activated, the review triggers use the agent of the current company, and **+** offers Project Inspector in every company that has none. The agent's permission sets are given in that company only.
 - **One task per project**, External ID = project No. Repeated triggers and answers add messages to that task until it is stopped or archived.
 - **The task message only names the project** (`Review <No.>`); the agent finds the open points in the data (steps 1 to 6 of the instructions).
 - **Dispatcher interface + provider** exist only to make the triggers and the Continue check testable without an activated agent.
@@ -194,6 +196,9 @@ Checked against the System Application source and in the sandbox:
 - `Agent Task Log Entry` is OnPrem only: cloud code cannot read which option the reviewer chose. `Agent Session`.GetCurrentSessionAgentTaskId tells a record which task wrote it.
 - An agent cannot search for pages; give it its own profile with every page it needs. `Agent`.SetProfile needs a company, so call it in `OnUpgradePerCompany`.
 - Business event parameters are limited to 250 characters.
+- A per-database upgrade has no company: permission sets written there with `Agent.UpdateAccessControl` get an empty company, which means every company. Never write the agent's permissions on upgrade; changes inside a permission set reach the agent anyway.
+- `Agent.GetAccessControl` fails on BC 29 ("Both target and source tables must refer to the same table": it copies `Access Control` into `Access Control Buffer` with Copy). Read the `Access Control` table directly.
+- An upgrade that fails on a Dev publish leaves the app and the apps that depend on it uninstalled; the data stays. Fix the error and publish again.
 - Publishing an App that drops a table the installed Test app uses fails and leaves both apps uninstalled; publish them again in the right order.
 
 ## Next steps

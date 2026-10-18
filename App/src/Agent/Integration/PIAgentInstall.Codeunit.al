@@ -11,8 +11,10 @@ codeunit 50101 "PI Agent Install"
     var
         PIAgentSetupRecord: Record "PI Agent Setup";
         PIAgentSetup: Codeunit "PI Agent Setup";
+        PIUpgradeTags: Codeunit "PI Upgrade Tags";
     begin
         PIAgentSetup.RegisterCapability();
+        PIUpgradeTags.SetAllPerDatabaseTags();
 
         if not PIAgentSetupRecord.FindSet() then
             exit;
