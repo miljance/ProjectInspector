@@ -24,5 +24,6 @@ permissionset 50100 "PI Project Inspector"
         codeunit "PI Business Events" = X,
         codeunit "PI Report Monitor" = X,
         codeunit "PI Review Result Processor" = X,
+        codeunit "PI Sent Report Check" = X,
         page "PI Review Results API" = X;
 }

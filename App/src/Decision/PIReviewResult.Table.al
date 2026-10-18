@@ -74,7 +74,7 @@ table 50105 "PI Review Result"
         field(9; Decision; Enum "PI Review Result Decision")
         {
             Caption = 'Decision';
-            ToolTip = 'Specifies the reviewer''s decision: Approve sets the project to Quote, Reject notifies the salesperson with the findings, Send Questions sends the questions of the report to the salesperson. Choose it here and then Continue in the task pane; only the reviewer chooses it, never the agent. Nothing is carried out before the task is finished.';
+            ToolTip = 'Specifies the reviewer''s decision: Approve sets the project to Quote, Reject notifies the salesperson with the findings, Send Questions sends the questions of the report to the salesperson. Business Central proposes it from the report: Send Questions when there are questions, Reject for findings or answers not applied, Approve for a clean report. Keep it or change it, then Continue in the task pane; the agent never changes it. Nothing is carried out before the task is finished.';
 
             trigger OnValidate()
             var
@@ -105,6 +105,12 @@ table 50105 "PI Review Result"
         {
             Caption = 'Decided At';
             ToolTip = 'Specifies when the reviewer chose the decision.';
+            Editable = false;
+        }
+        field(13; "Reviewer Asked"; Boolean)
+        {
+            Caption = 'Reviewer Asked';
+            ToolTip = 'Specifies that the agent asked the reviewer for the decision on this result: the report monitor saw its task wait for a person. Only then is the proposed decision carried out after Continue.';
             Editable = false;
         }
         field(10; "Agent Task ID"; BigInteger)
@@ -148,6 +154,7 @@ table 50105 "PI Review Result"
         "Recorded At" := CurrentDateTime();
         "Recorded By" := CopyStr(UserId(), 1, MaxStrLen("Recorded By"));
         LinkToAgentTask(AgentSession.GetCurrentSessionAgentTaskId());
+        ProposeDecision();
     end;
 
     trigger OnModify()
@@ -155,6 +162,75 @@ table 50105 "PI Review Result"
         AgentSession: Codeunit "Agent Session";
     begin
         LinkToAgentTask(AgentSession.GetCurrentSessionAgentTaskId());
+        ProposeDecision();
+    end;
+
+    /// <summary>
+    /// The reviewer never sees an empty Decision field: as soon as the report is recorded, Business Central proposes the
+    /// decision that follows from it, and follows the report while the reviewer edits it. A proposal has no Decided By,
+    /// so it is carried out only when the agent asked the reviewer ("Reviewer Asked") and the reviewer continued. A
+    /// decision a person chose is never replaced; a decision a person cleared is proposed again, because the field is
+    /// never left empty.
+    /// </summary>
+    local procedure ProposeDecision()
+    begin
+        if Processed or (Report = '') or IsDecidedByReviewer() then
+            exit;
+        Decision := GetProposedDecision();
+    end;
+
+    /// <summary>
+    /// Questions go to the salesperson first, also when there are findings. Findings or answers the agent could not
+    /// apply need the project engineer. Only a clean report is approved. A cancellation needs no decision.
+    /// </summary>
+    procedure GetProposedDecision(): Enum "PI Review Result Decision"
+    var
+        ReportParser: Codeunit "PI Report Parser";
+        ClarificationMgt: Codeunit "PI Clarification Mgt.";
+    begin
+        if (ReportParser.GetStatus(Report) = '') or ClarificationMgt.IsCancelled(Report) then
+            exit(Decision::" ");
+        if ReportParser.HasQuestions(Report) then
+            exit(Decision::"Send Questions");
+        if (ReportParser.GetFindingsText(Report) <> '') or (ReportParser.GetNotAppliedText(Report) <> '') then
+            exit(Decision::Reject);
+        exit(Decision::Approve);
+    end;
+
+    /// <summary>
+    /// The decision stands for a person: a person chose it, or the agent asked the reviewer with this proposal on the
+    /// card, so the reviewer's Continue accepts it. Opening the card is no proof: Business Central opens it in a
+    /// session that is not the agent's without any person looking (seen on BC 29).
+    /// </summary>
+    procedure IsReviewerAskedNow(Dispatcher: Interface "PI ITask Dispatcher"): Boolean
+    begin
+        if Processed or "Reviewer Asked" or ("Agent Task ID" <= 0) then
+            exit(false);
+        if (Report = '') or (Decision = Decision::" ") then
+            exit(false);
+        exit(Dispatcher.IsWaitingForReviewer("Agent Task ID"));
+    end;
+
+    /// <summary>
+    /// Notes that the agent asked the reviewer, when its task waits for a person now. Called by the report monitor every
+    /// minute and when the card is shown, so a quick Continue is not missed. Safe in any session: it proves that the
+    /// agent asked, and a task that asked continues only after a person's Continue.
+    /// </summary>
+    procedure NoteReviewerAsked(): Boolean
+    var
+        DispatcherProvider: Codeunit "PI Dispatcher Provider";
+    begin
+        if not IsReviewerAskedNow(DispatcherProvider.GetDispatcher()) then
+            exit(false);
+        "Reviewer Asked" := true;
+        exit(true);
+    end;
+
+    procedure IsConfirmed(): Boolean
+    begin
+        if Decision = Decision::" " then
+            exit(false);
+        exit(IsDecidedByReviewer() or "Reviewer Asked");
     end;
 
     /// <summary>
@@ -216,8 +292,8 @@ table 50105 "PI Review Result"
     var
         ReviewingTxt: Label 'Project Inspector is reviewing the project.';
         WaitingForDecisionTxt: Label 'Waiting for your decision: choose it in the Decision field and then Continue in the task pane.';
-        NotByReviewerTxt: Label 'Decision %1 was not chosen by a reviewer and is not carried out. Choose the decision in the Decision field.', Comment = '%1 = decision';
-        WaitingForContinueTxt: Label 'Decision: %1. Carried out after the task is finished.', Comment = '%1 = decision';
+        NotByReviewerTxt: Label 'Proposed decision: %1. Keep it or change it, then Continue in the task pane.', Comment = '%1 = decision';
+        WaitingForContinueTxt: Label 'Decision: %1. Change it if needed; it is carried out after Continue in the task pane.', Comment = '%1 = decision';
     begin
         if Processed then
             exit(Result);
@@ -227,6 +303,7 @@ table 50105 "PI Review Result"
             exit(WaitingForDecisionTxt);
         if not IsDecidedByReviewer() then
             exit(StrSubstNo(NotByReviewerTxt, Decision));
+        // A person chose it
         exit(StrSubstNo(WaitingForContinueTxt, Decision));
     end;
 

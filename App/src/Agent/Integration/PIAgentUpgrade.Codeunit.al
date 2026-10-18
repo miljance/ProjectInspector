@@ -1,5 +1,6 @@
 namespace Contoso.ProjectInspector;
 
+using System.Security.AccessControl;
 using System.Upgrade;
 
 /// <summary>
@@ -16,7 +17,9 @@ codeunit 50105 "PI Agent Upgrade"
     trigger OnUpgradePerDatabase()
     var
         PIAgentSetupRecord: Record "PI Agent Setup";
+        User: Record User;
         PIAgentSetup: Codeunit "PI Agent Setup";
+        AgentUserMissingTxt: Label 'A Project Inspector agent user no longer exists; its instructions were not updated.', Locked = true;
     begin
         PIAgentSetup.RegisterCapability();
 
@@ -24,18 +27,27 @@ codeunit 50105 "PI Agent Upgrade"
             exit;
 
         repeat
-            PIAgentSetup.UpdateInstructions(PIAgentSetupRecord."User Security ID");
-            PIAgentSetup.UpdateAccessControls(PIAgentSetupRecord."User Security ID");
+            // An agent whose user was deleted must not block the upgrade of the app.
+            if User.Get(PIAgentSetupRecord."User Security ID") then begin
+                PIAgentSetup.UpdateInstructions(PIAgentSetupRecord."User Security ID");
+                PIAgentSetup.UpdateAccessControls(PIAgentSetupRecord."User Security ID");
+            end else
+                Session.LogMessage('PI0002', AgentUserMissingTxt, Verbosity::Warning, DataClassification::SystemMetadata,
+                    TelemetryScope::ExtensionPublisher, 'Category', 'Project Inspector');
         until PIAgentSetupRecord.Next() = 0;
     end;
 
     /// <summary>
-    /// One-time steps, each guarded by its upgrade tag (PI Upgrade Tags).
+    /// One-time steps, each guarded by its upgrade tag (PI Upgrade Tags), and the report monitor job, repaired on every
+    /// upgrade: a publish can break the run that is just running and leave the job in Error.
     /// </summary>
     trigger OnUpgradePerCompany()
+    var
+        ReportMonitor: Codeunit "PI Report Monitor";
     begin
         LinkResultsToTasks();
         SetAgentProfile();
+        ReportMonitor.RepairJobQueueEntry();
     end;
 
     /// <summary>

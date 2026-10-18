@@ -258,7 +258,7 @@ codeunit 50163 "PI Review Result Tests"
         Assert.AreEqual(Job.Status::Planning, Job.Status, 'A decision no reviewer chose must not set Quote.');
         PIReviewResult.Get(PIReviewResult."Entry No.");
         Assert.IsFalse(PIReviewResult.Processed, 'The result must wait for a reviewer.');
-        Assert.IsTrue(PIReviewResult.GetStatusText().Contains('reviewer'), 'The card must say a reviewer has to choose: ' + PIReviewResult.GetStatusText());
+        Assert.IsTrue(PIReviewResult.GetStatusText().StartsWith('Proposed decision'), 'The card must show the decision as a proposal for the reviewer: ' + PIReviewResult.GetStatusText());
     end;
 
     [Test]
@@ -501,10 +501,15 @@ codeunit 50163 "PI Review Result Tests"
         // [THEN] The card says that it waits for the decision
         Assert.AreEqual('Waiting for your decision: choose it in the Decision field and then Continue in the task pane.', PIReviewResult.GetStatusText(), 'Wrong status before the decision.');
 
-        // [WHEN] The reviewer chose a decision that is not carried out yet
+        // [WHEN] Business Central proposed a decision that nobody has seen yet
+        PIReviewResult.Decision := PIReviewResult.Decision::Approve;
+        // [THEN] The card says that a reviewer has to confirm it
+        Assert.AreEqual('Proposed decision: Approve. Keep it or change it, then Continue in the task pane.', PIReviewResult.GetStatusText(), 'Wrong status of a proposal.');
+
+        // [WHEN] The reviewer chose or confirmed a decision that is not carried out yet
         PIReviewResult.Validate(Decision, PIReviewResult.Decision::Approve);
         // [THEN] The card says what will happen and when
-        Assert.AreEqual('Decision: Approve. Carried out after the task is finished.', PIReviewResult.GetStatusText(), 'Wrong status before Continue.');
+        Assert.AreEqual('Decision: Approve. Change it if needed; it is carried out after Continue in the task pane.', PIReviewResult.GetStatusText(), 'Wrong status before Continue.');
 
         // [WHEN] The report monitor carried it out
         PIReviewResult.Processed := true;
@@ -524,6 +529,245 @@ codeunit 50163 "PI Review Result Tests"
         // [WHEN] The card shows it in the full-width report view
         // [THEN] Every line is its own line and the text is shown as written
         Assert.AreEqual('Project X review: ERRORS<br>- Price &lt; rate card &amp; discount (PCR-16)', PIReviewResult.GetReportAsHtml(), 'Wrong report view.');
+    end;
+
+    [Test]
+    procedure QuestionsProposeSendQuestions()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A project
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+
+        // [WHEN] The agent records a report with findings and questions
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.ErrorsReport(Job."No."), Enum::"PI Review Result Decision"::" ");
+
+        // [THEN] Send Questions is proposed: the reviewer never sees an empty Decision field
+        Assert.AreEqual(PIReviewResult.Decision::"Send Questions", PIReviewResult.Decision, 'Questions must propose Send Questions.');
+    end;
+
+    [Test]
+    procedure FindingsWithoutQuestionsProposeReject()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A project
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+
+        // [WHEN] The agent records a report with findings only
+        RecordResult(PIReviewResult, Job."No.",
+            'Project ' + Job."No." + ' review: ERRORS' + TestLibrary.LF() +
+            'Blocks: 1 | Total: 3,150 | Days: 2' + TestLibrary.LF() +
+            'Findings:' + TestLibrary.LF() +
+            '- Standard block 001000..001900 missing (PCR-10)' + TestLibrary.LF() +
+            'Needs the project engineer. Not fixed by the agent.', Enum::"PI Review Result Decision"::" ");
+
+        // [THEN] Reject is proposed
+        Assert.AreEqual(PIReviewResult.Decision::Reject, PIReviewResult.Decision, 'Findings without questions must propose Reject.');
+    end;
+
+    [Test]
+    procedure AnswersNotAppliedProposeReject()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A project
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+
+        // [WHEN] The agent records a report after answers, one of which it could not apply
+        RecordResult(PIReviewResult, Job."No.",
+            'Project ' + Job."No." + ' review: OPEN POINTS' + TestLibrary.LF() +
+            'Blocks: 4 | Total: 77,222 | Days: 44' + TestLibrary.LF() +
+            'Changes applied:' + TestLibrary.LF() +
+            '- App users: 27 users -> Quantity of I-MOBILE-APP in task 003020 (300 -> 324)' + TestLibrary.LF() +
+            'Not applied:' + TestLibrary.LF() +
+            '- Discount: 10% on implementation: discounts are not allowed (PCR-16)' + TestLibrary.LF() +
+            'Needs the project engineer: answers not applied.', Enum::"PI Review Result Decision"::" ");
+
+        // [THEN] Reject is proposed: nothing is approved while an answer is open for the engineer
+        Assert.AreEqual(PIReviewResult.Decision::Reject, PIReviewResult.Decision, 'Answers not applied must propose Reject.');
+    end;
+
+    [Test]
+    procedure CleanReportProposesApprove()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A project
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+
+        // [WHEN] The agent records an OK report
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.OkReport(Job."No."), Enum::"PI Review Result Decision"::" ");
+
+        // [THEN] Approve is proposed
+        Assert.AreEqual(PIReviewResult.Decision::Approve, PIReviewResult.Decision, 'A clean report must propose Approve.');
+    end;
+
+    [Test]
+    procedure CancelledReportProposesNothing()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A project
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+
+        // [WHEN] The agent records a CANCELLED report
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.CancelledReport(Job."No."), Enum::"PI Review Result Decision"::" ");
+
+        // [THEN] No decision: a cancellation is carried out without one
+        Assert.AreEqual(PIReviewResult.Decision::" ", PIReviewResult.Decision, 'A cancellation needs no decision.');
+    end;
+
+    [Test]
+    procedure ChosenDecisionIsKept()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] The reviewer chose Reject on a report with questions
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.ErrorsReport(Job."No."), Enum::"PI Review Result Decision"::Reject);
+
+        // [WHEN] The result is saved again
+        PIReviewResult.Modify(true);
+
+        // [THEN] The reviewer's choice stays
+        Assert.AreEqual(PIReviewResult.Decision::Reject, PIReviewResult.Decision, 'A chosen decision must not be replaced by the proposal.');
+    end;
+
+    [Test]
+    procedure ProposalIsCarriedOutAfterTheReviewerWasAsked()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+        MockTaskDispatcher: Codeunit "PI Mock Task Dispatcher";
+    begin
+        // [GIVEN] The agent recorded a report with questions (Send Questions is proposed) and asks the reviewer
+        TestLibrary.UseMockDispatcher();
+        MockTaskDispatcher.SetTaskFinished(false);
+        MockTaskDispatcher.SetWaitingForReviewer(true);
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.TwoQuestionsReport(Job."No."), Enum::"PI Review Result Decision"::" ", 4711);
+
+        // [WHEN] The report monitor runs while the task waits for the reviewer
+        ReportMonitor.ProcessReviewResults();
+        // [THEN] Nothing is carried out yet, but the result knows the reviewer was asked
+        PIReviewResult.Get(PIReviewResult."Entry No.");
+        Assert.IsFalse(PIReviewResult.Processed, 'Nothing is carried out before Continue.');
+        Assert.IsTrue(PIReviewResult."Reviewer Asked", 'The monitor must note that the reviewer was asked.');
+
+        // [WHEN] The reviewer continues, the agent finishes the task and the monitor runs again
+        MockTaskDispatcher.SetWaitingForReviewer(false);
+        MockTaskDispatcher.SetTaskFinished(true);
+        ReportMonitor.ProcessReviewResults();
+
+        // [THEN] The proposal the reviewer continued with is carried out
+        PIReviewResult.Get(PIReviewResult."Entry No.");
+        Assert.AreEqual('Questions sent to the salesperson in Teams.', PIReviewResult.Result, 'The proposal must be carried out after Continue.');
+    end;
+
+    [Test]
+    procedure ProposalOfATaskThatNeverAskedIsNotCarriedOut()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+        MockTaskDispatcher: Codeunit "PI Mock Task Dispatcher";
+        ReviewResultCard: TestPage "PI Review Result Card";
+    begin
+        // [GIVEN] The agent recorded an OK report (Approve is proposed) and finished its task without asking the reviewer
+        TestLibrary.UseMockDispatcher();
+        MockTaskDispatcher.SetWaitingForReviewer(false);
+        MockTaskDispatcher.SetTaskFinished(true);
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.OkReport(Job."No."), Enum::"PI Review Result Decision"::" ", 4711);
+
+        // [WHEN] Somebody opens the result and the report monitor runs
+        ReviewResultCard.OpenView();
+        ReviewResultCard.GoToRecord(PIReviewResult);
+        ReviewResultCard.Close();
+        ReportMonitor.ProcessReviewResults();
+
+        // [THEN] Nothing is carried out: a proposal no reviewer continued with never approves a project
+        Job.Get(Job."No.");
+        Assert.AreEqual(Job.Status::Planning, Job.Status, 'An unasked proposal must not approve the project.');
+        PIReviewResult.Get(PIReviewResult."Entry No.");
+        Assert.IsFalse(PIReviewResult.Processed, 'The result must wait for a reviewer.');
+    end;
+
+    [Test]
+    procedure ProposalFollowsTheEditedReport()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+    begin
+        // [GIVEN] A report with findings and a question: Send Questions is proposed
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.ErrorsReport(Job."No."), Enum::"PI Review Result Decision"::" ");
+
+        // [WHEN] The reviewer removes the question from the report
+        PIReviewResult.Report :=
+            'Project ' + Job."No." + ' review: ERRORS' + TestLibrary.LF() +
+            'Blocks: 2 | Total: 20,025 | Days: 15' + TestLibrary.LF() +
+            'Findings:' + TestLibrary.LF() +
+            '- Discount of 375 on R-CONSULT in task 002010 (PCR-16)' + TestLibrary.LF() +
+            'Needs the project engineer. Not fixed by the agent.';
+        PIReviewResult.Modify(true);
+
+        // [THEN] The proposal follows the report: findings only propose Reject
+        Assert.AreEqual(PIReviewResult.Decision::Reject, PIReviewResult.Decision, 'The proposal must follow the edited report.');
+    end;
+
+    [Test]
+    procedure CardNotesThatTheReviewerWasAsked()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+        MockTaskDispatcher: Codeunit "PI Mock Task Dispatcher";
+        ReviewResultCard: TestPage "PI Review Result Card";
+    begin
+        // [GIVEN] The agent recorded a report and its task waits for the reviewer
+        TestLibrary.UseMockDispatcher();
+        MockTaskDispatcher.SetTaskFinished(false);
+        MockTaskDispatcher.SetWaitingForReviewer(true);
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.TwoQuestionsReport(Job."No."), Enum::"PI Review Result Decision"::" ", 4711);
+
+        // [WHEN] The review in the task pane shows the card, before the report monitor ran
+        ReviewResultCard.OpenView();
+        ReviewResultCard.GoToRecord(PIReviewResult);
+        ReviewResultCard.Close();
+
+        // [THEN] The result knows the reviewer was asked, so a quick Continue is not missed
+        PIReviewResult.Get(PIReviewResult."Entry No.");
+        Assert.IsTrue(PIReviewResult."Reviewer Asked", 'The card must note that the reviewer was asked.');
+    end;
+
+    [Test]
+    procedure ProjectOpensFromTheResult()
+    var
+        Job: Record Job;
+        PIReviewResult: Record "PI Review Result";
+        ReviewResultCard: TestPage "PI Review Result Card";
+        JobCard: TestPage "Job Card";
+    begin
+        // [GIVEN] A result of a project
+        TestLibrary.CreateProject(Job, Job.Status::Planning);
+        RecordResult(PIReviewResult, Job."No.", TestLibrary.TwoQuestionsReport(Job."No."), Enum::"PI Review Result Decision"::" ");
+
+        // [WHEN] The reviewer chooses Project on the result
+        ReviewResultCard.OpenView();
+        ReviewResultCard.GoToRecord(PIReviewResult);
+        JobCard.Trap();
+        ReviewResultCard.OpenProject.Invoke();
+
+        // [THEN] The Project Card of that project opens
+        Assert.AreEqual(Job."No.", JobCard."No.".Value(), 'The project of the result must open.');
+        JobCard.Close();
     end;
 
     local procedure RecordResult(var PIReviewResult: Record "PI Review Result"; ProjectNo: Code[20]; ReportText: Text; Decision: Enum "PI Review Result Decision")

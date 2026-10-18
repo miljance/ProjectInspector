@@ -28,10 +28,21 @@ codeunit 50113 "PI Report Monitor"
         StoppedResultTxt: Label 'Review stopped before a decision.';
         NotDoneResultTxt: Label '%1: %2', Comment = '%1 = decision, %2 = what happened instead', Locked = true;
         FailedResultTxt: Label 'Not carried out yet, retried every minute: %1', Comment = '%1 = error text';
+        SentReportsFailedTxt: Label 'Project Inspector could not read the agent''s sent reports; the review results were still processed.', Locked = true;
 
+    /// <summary>
+    /// The job queue run. Every step that writes runs in its own transaction, so one error neither fails the run nor
+    /// sets the recurring entry to Error (an entry in Error stops for every result until somebody restarts it).
+    /// </summary>
     trigger OnRun()
+    var
+        ReviewContext: Codeunit "PI Review Context";
     begin
-        CheckSentReports();
+        ReviewContext.ClearReviewResultId();
+        Commit();
+        if not Codeunit.Run(Codeunit::"PI Sent Report Check") then
+            Session.LogMessage('PI0001', SentReportsFailedTxt, Verbosity::Warning, DataClassification::SystemMetadata,
+                TelemetryScope::ExtensionPublisher, 'Category', 'Project Inspector', 'ErrorCode', GetLastErrorCode());
         ProcessReviewResults(true);
     end;
 
@@ -73,13 +84,18 @@ codeunit 50113 "PI Report Monitor"
                 ProcessedReviewResult.Get(PIReviewResult."Entry No.");
                 Close(ProcessedReviewResult, StoppedResultTxt);
             end else
-                if IsReadyToCarryOut(Dispatcher, PIReviewResult) then begin
+                if PIReviewResult.IsReviewerAskedNow(Dispatcher) then begin
                     ProcessedReviewResult.Get(PIReviewResult."Entry No.");
-                    if Isolated then
-                        CarryOutIsolated(ProcessedReviewResult)
-                    else
-                        CarryOutReviewResult(ProcessedReviewResult);
-                end;
+                    ProcessedReviewResult."Reviewer Asked" := true;
+                    ProcessedReviewResult.Modify();
+                end else
+                    if IsReadyToCarryOut(Dispatcher, PIReviewResult) then begin
+                        ProcessedReviewResult.Get(PIReviewResult."Entry No.");
+                        if Isolated then
+                            CarryOutIsolated(ProcessedReviewResult)
+                        else
+                            CarryOutReviewResult(ProcessedReviewResult);
+                    end;
         until PIReviewResult.Next() = 0;
     end;
 
@@ -91,8 +107,9 @@ codeunit 50113 "PI Report Monitor"
     end;
 
     /// <summary>
-    /// A result counts when it has a report and a decision (or is a CANCELLED report), and its agent task has finished,
-    /// that is after the reviewer chose Continue. A result without agent task (recorded by a person) counts at once.
+    /// A result counts when it has a report and a confirmed decision (or is a CANCELLED report), and its agent task has
+    /// finished, that is after the reviewer chose Continue. A result without agent task (recorded by a person) counts at
+    /// once.
     /// Nested checks, because AL evaluates both sides of "and" and "or".
     /// </summary>
     local procedure IsReadyToCarryOut(Dispatcher: Interface "PI ITask Dispatcher"; var PIReviewResult: Record "PI Review Result"): Boolean
@@ -105,7 +122,7 @@ codeunit 50113 "PI Report Monitor"
             if not ClarificationMgt.IsCancelled(PIReviewResult.Report) then
                 exit(false);
         end else
-            if not PIReviewResult.IsDecidedByReviewer() then
+            if not PIReviewResult.IsConfirmed() then
                 exit(false);
         if PIReviewResult."Agent Task ID" <= 0 then
             exit(true);
@@ -115,10 +132,13 @@ codeunit 50113 "PI Report Monitor"
     local procedure CarryOutIsolated(var PIReviewResult: Record "PI Review Result")
     var
         FailedReviewResult: Record "PI Review Result";
+        ReviewContext: Codeunit "PI Review Context";
     begin
         Commit();
         if Codeunit.Run(Codeunit::"PI Review Result Processor", PIReviewResult) then
             exit;
+        // The processor stopped before it cleared the result it was carrying out: no later event may name it.
+        ReviewContext.ClearReviewResultId();
         FailedReviewResult.Get(PIReviewResult."Entry No.");
         FailedReviewResult.Result := CopyStr(StrSubstNo(FailedResultTxt, GetLastErrorText()), 1, MaxStrLen(FailedReviewResult.Result));
         FailedReviewResult.Modify();
@@ -289,7 +309,8 @@ codeunit 50113 "PI Report Monitor"
 
     /// <summary>
     /// Creates the recurring job in the current company, once. Replies written before that are not read,
-    /// so old reports are not sent to the salesperson again. Needs write permission on job queue entries.
+    /// so old reports are not sent to the salesperson again. An existing job that stopped is repaired (see
+    /// RepairJobQueueEntry), so every new review brings it back. Needs write permission on job queue entries.
     /// </summary>
     procedure EnsureJobQueueEntry(AgentUserSecurityId: Guid)
     var
@@ -300,8 +321,10 @@ codeunit 50113 "PI Report Monitor"
 
         JobQueueEntry.SetRange("Object Type to Run", JobQueueEntry."Object Type to Run"::Codeunit);
         JobQueueEntry.SetRange("Object ID to Run", Codeunit::"PI Report Monitor");
-        if not JobQueueEntry.IsEmpty() then
+        if not JobQueueEntry.IsEmpty() then begin
+            RepairJobQueueEntry();
             exit;
+        end;
         if not JobQueueEntry.WritePermission() then
             exit;
 
@@ -318,7 +341,44 @@ codeunit 50113 "PI Report Monitor"
         JobQueueEntry."Run on Saturdays" := true;
         JobQueueEntry."Run on Sundays" := true;
         JobQueueEntry."No. of Minutes between Runs" := 1;
+        SetRetries(JobQueueEntry);
         Codeunit.Run(Codeunit::"Job Queue - Enqueue", JobQueueEntry);
+    end;
+
+    /// <summary>
+    /// A run that breaks once, for example because the app is published while the job runs, is retried instead of
+    /// leaving the recurring job in Error; a job in Error or On Hold is started again. Called for every new review and
+    /// on every upgrade (each publish of a new version).
+    /// </summary>
+    procedure RepairJobQueueEntry()
+    var
+        JobQueueEntry: Record "Job Queue Entry";
+    begin
+        if not JobQueueEntry.WritePermission() then
+            exit;
+        JobQueueEntry.SetRange("Object Type to Run", JobQueueEntry."Object Type to Run"::Codeunit);
+        JobQueueEntry.SetRange("Object ID to Run", Codeunit::"PI Report Monitor");
+        if not JobQueueEntry.FindSet() then
+            exit;
+        repeat
+            if JobQueueEntry."Maximum No. of Attempts to Run" < MaxAttempts() then begin
+                SetRetries(JobQueueEntry);
+                JobQueueEntry.Modify();
+            end;
+            if JobQueueEntry.Status in [JobQueueEntry.Status::Error, JobQueueEntry.Status::"On Hold"] then
+                JobQueueEntry.Restart();
+        until JobQueueEntry.Next() = 0;
+    end;
+
+    local procedure SetRetries(var JobQueueEntry: Record "Job Queue Entry")
+    begin
+        JobQueueEntry."Maximum No. of Attempts to Run" := MaxAttempts();
+        JobQueueEntry."Rerun Delay (sec.)" := 60;
+    end;
+
+    local procedure MaxAttempts(): Integer
+    begin
+        exit(3);
     end;
 
     local procedure CheckAgent(AgentUserSecurityId: Guid)

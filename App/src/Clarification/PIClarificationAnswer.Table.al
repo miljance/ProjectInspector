@@ -37,6 +37,7 @@ table 50102 "PI Clarification Answer"
         {
             Caption = 'Answered By';
             ToolTip = 'Specifies who answered, for example the e-mail of the salesperson in Teams.';
+            DataClassification = EndUserIdentifiableInformation;
         }
         field(5; "Received At"; DateTime)
         {

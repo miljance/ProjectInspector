@@ -102,6 +102,15 @@ codeunit 50107 "PI Agent Task Dispatcher" implements "PI ITask Dispatcher"
         exit(AgentTaskRecord.Status in [AgentTaskRecord.Status::"Stopped by User", AgentTaskRecord.Status::"Stopped by System"]);
     end;
 
+    procedure IsWaitingForReviewer(AgentTaskId: BigInteger): Boolean
+    var
+        AgentTaskRecord: Record "Agent Task";
+    begin
+        if not AgentTaskRecord.Get(AgentTaskId) then
+            exit(false);
+        exit(AgentTaskRecord."Needs Attention");
+    end;
+
     procedure IsReviewTaskFinished(AgentTaskId: BigInteger): Boolean
     var
         AgentTaskRecord: Record "Agent Task";

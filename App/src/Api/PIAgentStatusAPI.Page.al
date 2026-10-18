@@ -16,7 +16,7 @@ page 50105 "PI Agent Status API"
     EntityCaption = 'Agent Status';
     EntitySetCaption = 'Agent Statuses';
     SourceTable = "PI Agent KPI";
-    ODataKeyFields = "User Security ID";
+    ODataKeyFields = SystemId;
     Editable = false;
     InsertAllowed = false;
     ModifyAllowed = false;
@@ -29,6 +29,10 @@ page 50105 "PI Agent Status API"
         {
             repeater(Records)
             {
+                field(id; Rec.SystemId)
+                {
+                    Caption = 'Id';
+                }
                 field(agentUserSecurityId; Rec."User Security ID")
                 {
                     Caption = 'Agent User Security ID';

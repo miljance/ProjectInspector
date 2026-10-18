@@ -28,6 +28,7 @@ codeunit 50160 "PI Mock Task Dispatcher" implements "PI ITask Dispatcher"
         LastCheckedTaskId: BigInteger;
         ReviewTaskId: BigInteger;
         TaskStopped: Boolean;
+        WaitingForReviewer: Boolean;
 
     procedure Reset()
     begin
@@ -46,6 +47,17 @@ codeunit 50160 "PI Mock Task Dispatcher" implements "PI ITask Dispatcher"
         LastCheckedTaskId := 0;
         ReviewTaskId := 4711;
         TaskStopped := false;
+        WaitingForReviewer := false;
+    end;
+
+    procedure SetWaitingForReviewer(NewWaitingForReviewer: Boolean)
+    begin
+        WaitingForReviewer := NewWaitingForReviewer;
+    end;
+
+    procedure IsWaitingForReviewer(AgentTaskId: BigInteger): Boolean
+    begin
+        exit(WaitingForReviewer);
     end;
 
     procedure SetTaskStopped(NewTaskStopped: Boolean)

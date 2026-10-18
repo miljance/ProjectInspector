@@ -4,7 +4,7 @@ A Business Central agent, built with the AL Agent SDK, that reviews every new cu
 
 Built for the Directions EMEA 2026 session **"One Voice Note, a Complete Project. AI Agents at Work in Business Central"** (29 Oct 2026). The agent was designed and tested in Agent Designer, exported (`App/.resources/Instructions/ProjectInspector-agent-export.xml`) and moved into this app with the AL **Agent** project template.
 
-**Status:** version 2.21 compiles against BC 29 and all 97 tests pass in a BC 29 sandbox. The one-approval review flow (Review Result page, decision after Continue) is being tested end to end in the sandbox, see [Next steps](#next-steps).
+**Status:** version 2.26 compiles against BC 29 and all 109 tests pass in a BC 29 sandbox. The full FAB-01-IMP round ran end to end on 18 Oct 2026: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
 
 All demo content is fictional (CRONUS US style). **Never add real customer, company or product names.**
 
@@ -41,15 +41,15 @@ All triggers send `Review <No.>` to the project's task, External ID = project No
 
 Project Inspector runs with its own profile **Project Inspector Agent** and home page `PI Agent Role Center` (50109): Projects, Customers and Project Inspector Review Results. An agent cannot search for pages, it only reaches what its home page and the opened pages offer. On the Project Manager home page it could not reach the Review Results page. The upgrade sets the profile on existing agents (`PI Agent Setup`.UpdateProfile, per company).
 
-Permissions: **D365 READ** to review, plus **PI Agent Edit** to apply the salesperson's answers (Job, Job Task, Job Task Dimension, Job Planning Line) and to record the review result.
+Permissions: **D365 READ** to review, plus **PI Agent Edit** to apply the salesperson's answers (Job, Job Task, Job Task Dimension, Job Planning Line, and indirectly Job Entry No., which numbers a new planning line) and to record the review result.
 
 ### One review round, one approval
 
 1. The agent checks the project (steps 1 to 6 of the instructions). A project without tasks is a finding, not a reason to stop.
 2. Business Central has already created the result of the round (table `PI Review Result` 50105) together with the task or message: `PI Review Trigger` calls `StartRound` for every review and every answer, ties the result to the agent task and closes an older open result of the project. The agent opens Project Inspector Review Results from its home page, opens its project's result (never New) and writes the report into the card (50108).
-3. It asks for assistance **on the card**. The review opens the card: the report in a full-width editable field and the **Decision** field (Approve, Reject, Send Questions).
-4. The engineer may edit the report (findings and questions are sent as they are on the card), **chooses the decision in the Decision field** and chooses **Continue**. Only a person can set the Decision: the table refuses it in the agent's session and records who decided (`Decided By`, `Decided At`), and the monitor carries out only a decision a person set. Business Central cannot tell which option a reviewer gave the agent (the agent log is OnPrem only), so this keeps a confused or prompt-injected agent from approving a project on its own. The agent only checks that the field is filled and ends the task; it never replies.
-5. **Nothing happens before Continue.** The job queue job `PI Report Monitor` (every minute, created in the company on the first review) carries out a result only when its agent task is completed, each result in its own transaction (`PI Review Result Processor`): a result that fails keeps its error in Status and is tried again, the others still go out. The Status says what really happened, also when an Approve could not set Quote. "Decide later" or "Stop task" leaves it untouched. The card shows the step in **Status**: waiting for your decision, decision waiting for Continue, or what was done.
+3. It asks for assistance **on the card**. The review opens the card: the report in a full-width editable field and the **Decision** field, which Business Central has already filled with a proposal from the report: **Send Questions** when there are questions (also with findings), **Reject** for findings or answers that could not be applied, **Approve** for a clean report, nothing for a cancellation. The proposal follows the report while the engineer edits it. The card has a **Project** action that opens the reviewed project.
+4. The engineer may edit the report (findings and questions are sent as they are on the card), keeps or changes the Decision and chooses **Continue**. A decision is carried out only when a person chose it (`Decided By`, set when the field is validated outside the agent's session), or when the agent asked the reviewer with the proposal on the card (`Reviewer Asked`: the monitor or the card saw the agent task wait for a person) and the task completed after Continue. Opening the card is no proof that a person looked: Business Central opens it in a session that is not the agent's without anybody looking (seen as user `{...0001}` on BC 29). A task that finishes without asking never carries out its proposal, so an agent that skips the assistance request cannot approve a project. The agent cannot set the Decision (the table refuses it in the agent's session); it checks that the field is filled and ends the task, it never replies.
+5. **Nothing happens before Continue.** The job queue job `PI Report Monitor` (every minute, created in the company on the first review) carries out a result only when its agent task is completed, each result in its own transaction (`PI Review Result Processor`): a result that fails keeps its error in Status and is tried again, the others still go out. The agent's sent reports are read in their own transaction too (`PI Sent Report Check`). A run that breaks, for example when the app is published while it runs, is retried three times a minute apart, and every new review and every upgrade restarts the job if it is in Error or On Hold. The Status says what really happened, also when an Approve could not set Quote. "Decide later" or "Stop task" leaves it untouched. The card shows the step in **Status**: proposed decision, decision waiting for Continue, or what was done.
 
 A result is **Closed** when it was carried out, replaced by a newer round, or its task was stopped ("Review stopped before a decision.", nothing is carried out); the Status says which. A closed result is read-only, and in the agent's session the Review Results list shows only open results, so a new round never overwrites an old one. The agent writes into a plain Report field that only its session shows; people see the report in a full-width editor in its own FastTab, and the Project Card shows Open Points the same way.
 
@@ -71,7 +71,7 @@ The platform limits every text parameter of an external business event to 250 ch
 
 ### Answers from the salesperson
 
-Power Automate posts the answer to `clarificationAnswers`; `PI Review Trigger`.RegisterAnswer adds it to the project's task. Project Inspector applies the answers (instructions, *When answers arrive*): dates, quantities, new planning lines, split of days, quote numbers for `Q-NEW-<n>`, Open Points. It never changes Unit Price or Line Discount %: a price or discount from an answer goes to **Not applied** with the reason (PCR-14, PCR-16) and on to Teams. Then it reviews the changed project and records the next report.
+Power Automate posts the answer to `clarificationAnswers`; `PI Review Trigger`.RegisterAnswer adds it to the project's task. Project Inspector applies the answers (instructions, *When answers arrive*): dates, quantities (users × months for the app line), new planning lines (trips with a TRAVEL task when the block has none), split of days, quote numbers for `Q-NEW-<n>`. It never removes a line from Open Points: it adds the answer to the line it settles (`Answered: ...`) and does not ask it again. The next report lists every answer under **Changes applied** or **Not applied**. It never changes Unit Price or Line Discount %: a price or discount from an answer goes to **Not applied** with the reason (PCR-14, PCR-16) and on to Teams. Then it reviews the changed project and records the next report.
 
 ### Power Automate flows
 
@@ -88,9 +88,9 @@ Base URL: `/api/contoso/projectInspector/v1.0/companies({companyId})/`
 | --- | --- | --- |
 | `projectReviews` (GET, PATCH `openPoints`, actions `submitForReview`, `buildProjectStructure`) | 50102 | Scribe Agent through the MCP server (configuration `SCRIBE-AGENT`, Read + Modify, bound actions allowed) |
 | `clarificationAnswers` (POST) | 50103 | Power Automate |
-| `agentStatuses` (GET) | 50105 | Checking a deployment: instructions version and counters of each agent |
+| `agentStatuses` (GET) | 50105 | Checking a deployment: instructions version and counters of each agent (key `id` = SystemId) |
 | `reviewReports` (GET, action `restartReview`) | 50106 | Evaluation runs: latest report of each project (reply or recorded result), start a new review task |
-| `reviewResults` (GET) | 50110 | Power Automate: full questions, findings and answers not applied of the review result named in a business event (ReviewResultId), plus decision and status |
+| `reviewResults` (GET) | 50110 | Power Automate: full questions, findings and answers not applied of the review result named in a business event (ReviewResultId), plus decision, status, who decided and when, and whether the reviewer was asked |
 
 `buildProjectStructure(tasksJson, linesJson)` creates all tasks and planning lines of a project without tasks in one call, because the BC MCP server leaves out `Job No.` (Job Task) and `Line No.` (Job Planning Line) on create. Both parameters are JSON arrays sent as text:
 
@@ -125,12 +125,12 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50152 PI Clarification Answer Tests | answer goes to the task of the project, empty answer, unknown project |
 | 50153 PI Clarification Event Tests | questions event, project No. fallback |
 | 50154 PI Agent KPI Tests | the summary page shows which instructions version the agent has |
-| 50155 PI Report Monitor Tests | each sent reply is read once and logged |
+| 50155 PI Report Monitor Tests | each sent reply is read once and logged, a stopped monitor job is repaired and retries broken runs |
 | 50156 PI Report Event Tests | approve, reject, questions, not applied and cancelled from a report with a Decision line |
 | 50157 PI Review Decision Tests | each decision is logged and carried out once |
 | 50158 PI Project Structure Tests | `buildProjectStructure`: indentation, totaling (also Total tasks), line numbers, card prices, unit of measure, project currency, required quantity, date format, status Planning, refused input |
 | 50159 PI Suggestion Tests | no decision buttons on the result card (the reviewer uses the Decision field), project check elsewhere, the agent's own profile |
-| 50163 PI Review Result Tests | one result per round created by code, older open result replaced, stopped task closes its result, only a decision a person chose is carried out, events name their result and the full questions are readable, decision waits for Continue, each result carried out once, edited report, status text, task link |
+| 50163 PI Review Result Tests | one result per round created by code, older open result replaced, stopped task closes its result, decision proposed from the report and after edits, a proposal carried out only after the agent asked the reviewer, a chosen decision kept, events name their result and the full questions are readable, decision waits for Continue, each result carried out once, edited report, status text, task link, Project action |
 | 50164 PI Planned Days Tests | Planned Days on the Project Card sum only the resource lines planned in days |
 | 50165 PI Planning Lines Page Tests | Project Planning Lines show Line Discount Amount |
 
@@ -163,7 +163,7 @@ Version 2.21 (instructions rewritten so that every rule appears once) matches al
 
 - **The agent changes data only for the salesperson's answers** (PI Agent Edit) and to record its review result. Status changes, decisions and business events happen in AL code (`PI Report Monitor`), never by the agent.
 - **One approval per round.** The engineer decides once, on the Review Result card, with the options in the task pane. Tried and dropped: decision actions on the Project Card (decisions belong to the agent's options, like the Payables Agent's), a help request followed by a review of the reply (two steps), options on the review of an outgoing message (Business Central shows none there), and editing a Decision line in the reply (Sales Order Agent style).
-- **Only a person decides.** The reviewer chooses the decision in a field on the card; a decision the agent user set is never carried out.
+- **Business Central proposes, a person decides.** The Decision field is never empty: Business Central proposes it from the report, the reviewer keeps or changes it and continues. A decision the agent user set, or a proposal of a task that never asked the reviewer, is never carried out.
 - **The agent never replies.** Like the Payables Agent, it limits its interactions to asking for assistance; the report lives on our page, where we control the fields.
 - **Nothing happens before Continue.** A decision counts only after the agent task that recorded it has completed.
 - **No trigger on project insert**: tasks and planning lines do not exist yet. Scribe Agent calls `submitForReview` when it is done (PCR-27).
@@ -179,6 +179,10 @@ Version 2.21 (instructions rewritten so that every rule appears once) matches al
 
 Checked against the System Application source and in the sandbox:
 
+- Opening a page is no proof that a person looked at it: during a review Business Central opens the agent's page in a session that is not the agent's (UserSecurityId `{00000000-0000-0000-0000-000000000001}`). `Agent Task`."Needs Attention" shows that the task waits for a person.
+- A recurring job queue entry goes to Error when a publish breaks the run that is just running, and stays there: give it retries and restart it on upgrade.
+- Inserting a Job Planning Line needs indirect modify on `Job Entry No.` (1015); without it the agent gets a permission request it cannot get past.
+
 - A message is added to an existing task with `Agent Task Message Builder`.SetAgentTask(...).Create(true), which also sets the task to Ready when possible. Task messages default to *requires review*; the dispatcher turns that off.
 - A task keeps the instructions it was created with; a stopped task never runs again.
 - `AnalyzeAgentTaskMessage` is called only for a task's input messages, not for the agent's replies.
@@ -192,9 +196,9 @@ Checked against the System Application source and in the sandbox:
 
 ## Next steps
 
-1. **One-approval flow end to end.** Stop old tasks, send FAB-01-IMP, check that a new result is created, that the card opens on it, that the decision waits for Continue and that the Status shows the outcome.
-2. **Power Automate.** Build the four notification flows (approved, rejected, changes not applied, cancelled) and check the questions loop: card in Teams, answer on the same task, answers applied, next report.
-3. **Evaluation.** Re-import the demo data and run the six projects with `tools/Run-ReviewEval.ps1` (uses Copilot credits).
+1. **Evaluation twice before the session.** Re-import the demo data and run `tools/Run-ReviewEval.ps1` two times (12 runs, Copilot credits): one run cannot tell a fix from luck.
+2. **Power Automate.** Test all five flows (questions, approved, rejected, changes not applied, cancelled); the questions loop worked end to end on 18 Oct 2026.
+3. **Job queue before the demo.** Do not publish after the last check: Job Queue Entries, *Project Inspector: send review decisions and notifications* must be Ready.
 4. **Before the session.** The app is published from VS Code (Dev); upload it as a per-tenant extension so a sandbox update does not remove it.
 
 ## Repository layout

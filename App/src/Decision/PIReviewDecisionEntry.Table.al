@@ -68,8 +68,5 @@ table 50104 "PI Review Decision Entry"
         {
             Clustered = true;
         }
-        key(Pending; Processed, "Entry No.")
-        {
-        }
     }
 }

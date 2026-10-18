@@ -84,15 +84,17 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    c. Close the list.
 6. Open Points (PCR-24).
    Every line of the memorized Open Points is open until the salesperson answers it, also when the project
-   already has a value for it. For every line add the question "<the line as it is> (PCR-24)". Leave out
-   only these two, because an earlier check already asks them:
+   already has a value for it. A line that contains "Answered:" is settled: skip it. For every other line
+   add the question "<the line as it is> (PCR-24)". Leave out only these two, because an earlier check
+   already asks them:
    - a line that starts with "Quote numbers:", when step 2g added a quote number question;
    - a line that starts with "Services:", when step 3b added a split question.
 7. Prepare the review report from the two lists, blocks, total and days.
    Status and closing line:
    - findings not empty: ERRORS, "Needs the project engineer. Not fixed by the agent."
-   - only questions: OPEN POINTS, "Waiting for answers from the salesperson."
-   - both empty: OK, "Ready for the project engineer."
+   - otherwise questions not empty: OPEN POINTS, "Waiting for answers from the salesperson."
+   - otherwise not_applied not empty: OPEN POINTS, "Needs the project engineer: answers not applied."
+   - otherwise: OK, "Ready for the project engineer."
    Write every amount and price with a thousands separator and no decimals, for example 1,250 or 20,025.
    Leave out an empty section. Use exactly this format:
    "Project <No.> review: <status>
@@ -106,15 +108,16 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
     Not applied:
     - <answer>: <reason>
     <closing line>"
-   Changes applied and Not applied exist only after answers (see WHEN ANSWERS ARRIVE).
+   After answers (see WHEN ANSWERS ARRIVE), Changes applied lists every entry of the list changes and
+   Not applied every entry of the list not_applied. Every answer line is in one of them.
 8. Record the report and ask the reviewer for the decision.
    a. Close the pages until you are on the home page and open Project Inspector Review Results. Business
       Central has already created the result for this review round: open the result of this project.
       Never choose New. Write the complete report into its Report field, one line per line of the format.
-      Leave the Decision field empty.
+      Business Central then proposes a decision in the Decision field. Never change it.
    b. Stay on this Project Inspector Review Result page and ask for assistance there with a short summary:
       the first two lines of the report, the number of findings and questions, and
-      "Choose the decision in the Decision field on this page (Approve, Reject or Send Questions), then Continue."
+      "Business Central proposes a decision in the Decision field. Keep it or change it, then Continue."
       This is the only approval of the review round.
    c. When the reviewer continues, check that the Decision field is filled. Never fill or change it
       yourself: only the reviewer decides. If it is empty, ask for assistance again with the same message.
@@ -127,21 +130,30 @@ a. If the salesperson cancels the project (for example "cancel the project" or "
    the task without asking for a decision:
    "Project <No.> review: CANCELLED
     Stopped: the salesperson cancelled the project."
-b. Otherwise apply every answer to the project, following the rules and the RATE CARD:
+b. Otherwise apply the answers, following the rules and the RATE CARD. The message has one line per topic,
+   for example "Travel: two on-site trips". Handle every line; none may be left out.
    - Dates: Starting Date and Ending Date in the Duration section of the Project Card.
+   - Users: the Quantity of the I-MOBILE-APP line is users x months; the months are in its Description,
+     for example 27 users x 12 months = 324.
+   - Trips: one I-TRAVEL line with Quantity = trips, Line Type "Both Budget and Billable", under the TRAVEL
+     task of the block the trips are for (trips during implementation: the implementation block). If that
+     block has no TRAVEL task yet, first add one in the Tasks part: Project Task Type Posting, Description
+     TRAVEL, and the next free task number of the block before its End-Total task (PCR-13).
    - Quantities: the Quantity of the matching planning line. Never change Unit Price or Line Discount %.
-   - New planning lines: add them under the matching task with the rate card No., the Quantity and Line
-     Type "Both Budget and Billable", for example travel trips under a TRAVEL task. If the block has no
-     TRAVEL task yet, first add one in the Tasks part: Project Task Type Posting, Description TRAVEL, and
-     the next free task number of the block before its End-Total task (PCR-13).
+   - New planning lines: under the matching task, with the rate card No., the Quantity and Line Type
+     "Both Budget and Billable".
    - Split of days: replace the one "Implementation services" line by one line per phase with the
      answered days. The total days stay the same.
    - Quote numbers: replace Q-NEW-<n> in the block title (Begin-Total task) and in "Total Q-NEW-<n>"
      (End-Total task) with the answered quote number.
-   - Open Points: remove every line that the answers settle.
-   Memorize every change in the list changes as "<what> (<old> -> <new>)". When an answer cannot be
-   applied (the field cannot be edited, the answer is unclear, or it breaks a rule, for example a discount
-   or a price other than the rate card), change nothing for it and add it to the list not_applied as
-   "<answer>: <reason>".
-c. Then run the review again from step 1 on the changed project and add the sections Changes applied and
-   Not applied to the report. Do not ask again about points that the answers settled.
+   For every answer line memorize exactly one entry:
+   - in the list changes: "<topic>: <answer> -> <what you changed> (<old> -> <new>)", or
+     "<topic>: <answer> -> no change needed (<why>)" when the project already matches the answer;
+   - or, when it cannot be applied (the field cannot be edited, the answer is unclear, or it breaks a rule,
+     for example a discount or a price other than the rate card), change nothing for it and add to the list
+     not_applied: "<topic>: <answer>: <reason>".
+   Never remove a line from Open Points: the answers must stay visible. Add the answer to the end of every
+   line it settles, applied or not: "<the line> Answered: <answer>".
+c. Then run the review again from step 1 on the changed project. Keep the lists changes and not_applied:
+   the new report must show both sections with all their entries. Do not ask again about points that the
+   answers settled.

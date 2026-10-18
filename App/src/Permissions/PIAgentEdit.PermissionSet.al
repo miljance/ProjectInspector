@@ -1,6 +1,7 @@
 namespace Contoso.ProjectInspector;
 
 using Microsoft.Projects.Project.Job;
+using Microsoft.Projects.Project.Journal;
 using Microsoft.Projects.Project.Planning;
 
 /// <summary>
@@ -19,6 +20,9 @@ permissionset 50101 "PI Agent Edit"
         tabledata "Job Task" = RIM,
         tabledata "Job Task Dimension" = RIMD,
         tabledata "Job Planning Line" = RIMD,
+        // A new planning line takes its Job Contract Entry No. from this counter (seen on BC 29 when the agent added
+        // the travel line of an answer).
+        tabledata "Job Entry No." = Rim,
         tabledata "PI Review Result" = RIM,
         page "PI Review Results" = X,
         page "PI Review Result Card" = X,

@@ -1,11 +1,12 @@
 namespace Contoso.ProjectInspector;
 
+using Microsoft.Projects.Project.Job;
 using System.Agents;
 
 /// <summary>
 /// One review result. The agent fills in the project and the report and asks for assistance on this page, so the
-/// review opens it: the reviewer reads and can edit the report here, and decides with the instructions in the task
-/// pane; the agent then sets the Decision. Nothing is carried out before Continue (see PI Report Monitor).
+/// review opens it: the reviewer reads and can edit the report here, keeps or changes the Decision Business Central
+/// proposed, and continues in the task pane. Nothing is carried out before Continue (see PI Report Monitor).
 /// Not DelayedInsert: the result must exist while the agent waits for the reviewer.
 /// A carried-out result is read-only, so a new review cannot overwrite it.
 /// </summary>
@@ -82,6 +83,25 @@ page 50108 "PI Review Result Card"
         }
     }
 
+    actions
+    {
+        area(Navigation)
+        {
+            action(OpenProject)
+            {
+                Caption = 'Project';
+                ToolTip = 'Open the Project Card of the reviewed project.';
+                Image = Job;
+                RunObject = page "Job Card";
+                RunPageLink = "No." = field("Project No.");
+            }
+        }
+        area(Promoted)
+        {
+            actionref(OpenProject_Promoted; OpenProject) { }
+        }
+    }
+
     trigger OnOpenPage()
     var
         AgentSession: Codeunit "Agent Session";
@@ -92,6 +112,9 @@ page 50108 "PI Review Result Card"
 
     trigger OnAfterGetCurrRecord()
     begin
+        // Shown while the agent's task waits for the reviewer: note it, so a quick Continue is not missed (see the table).
+        if Rec.NoteReviewerAsked() then
+            Rec.Modify();
         ReportHtml := Rec.GetReportAsHtml();
         StatusText := Rec.GetStatusText();
         IsProcessed := Rec.Processed;

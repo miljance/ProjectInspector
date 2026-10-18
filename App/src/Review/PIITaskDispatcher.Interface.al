@@ -6,6 +6,9 @@ namespace Contoso.ProjectInspector;
 /// </summary>
 interface "PI ITask Dispatcher"
 {
+    // Internal: only Project Inspector and its test app (internalsVisibleTo) implement it, so it can grow.
+    Access = Internal;
+
     /// <summary>
     /// Returns true when an active Project Inspector agent can take the task.
     /// </summary>
@@ -43,4 +46,10 @@ interface "PI ITask Dispatcher"
     /// again, so its open review result is closed without carrying anything out.
     /// </summary>
     procedure IsReviewTaskStopped(AgentTaskId: BigInteger): Boolean;
+
+    /// <summary>
+    /// Returns true while the agent task waits for a person (Needs Attention), that is after the agent asked the
+    /// reviewer for assistance and before the reviewer continued.
+    /// </summary>
+    procedure IsWaitingForReviewer(AgentTaskId: BigInteger): Boolean;
 }

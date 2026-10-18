@@ -1,5 +1,7 @@
 namespace Contoso.ProjectInspector;
 
+using System.Security.AccessControl;
+
 /// <summary>
 /// The review results with their full texts, for the Power Automate flows. Business event parameters are limited to
 /// 250 characters by the platform (AL0762), so every event carries ReviewResultId and the flow reads the questions,
@@ -66,6 +68,22 @@ page 50110 "PI Review Results API"
                 {
                     Caption = 'Report';
                 }
+                field(decidedBy; DecidedByName)
+                {
+                    Caption = 'Decided By';
+                }
+                field(decidedAt; Rec."Decided At")
+                {
+                    Caption = 'Decided At';
+                }
+                field(reviewerAsked; Rec."Reviewer Asked")
+                {
+                    Caption = 'Reviewer Asked';
+                }
+                field(recordedAt; Rec."Recorded At")
+                {
+                    Caption = 'Recorded At';
+                }
                 field(closed; Rec.Processed)
                 {
                     Caption = 'Closed';
@@ -84,6 +102,18 @@ page 50110 "PI Review Results API"
         QuestionsText := Rec.GetQuestionsText();
         FindingsText := Rec.GetFindingsText();
         NotAppliedText := Rec.GetNotAppliedText();
+        DecidedByName := GetUserName(Rec."Decided By");
+    end;
+
+    local procedure GetUserName(UserSecurityId: Guid): Text
+    var
+        User: Record User;
+    begin
+        if IsNullGuid(UserSecurityId) then
+            exit('');
+        if User.Get(UserSecurityId) then
+            exit(User."User Name");
+        exit(Format(UserSecurityId));
     end;
 
     var
@@ -91,4 +121,5 @@ page 50110 "PI Review Results API"
         QuestionsText: Text;
         FindingsText: Text;
         NotAppliedText: Text;
+        DecidedByName: Text;
 }

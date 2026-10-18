@@ -3,6 +3,7 @@ namespace Contoso.ProjectInspector.Test;
 using Contoso.ProjectInspector;
 using Microsoft.Projects.Project.Job;
 using System.TestLibraries.Utilities;
+using System.Threading;
 
 /// <summary>
 /// Business Central calls AnalyzeAgentTaskMessage only for the input messages of an agent task, not for the
@@ -18,6 +19,31 @@ codeunit 50155 "PI Report Monitor Tests"
         Assert: Codeunit "Library Assert";
         TestLibrary: Codeunit "PI Test Library";
         ReportMonitor: Codeunit "PI Report Monitor";
+
+    [Test]
+    procedure StoppedMonitorJobIsRepaired()
+    var
+        JobQueueEntry: Record "Job Queue Entry";
+    begin
+        // [GIVEN] The report monitor job went to Error, for example because the app was published while it ran
+        JobQueueEntry.Init();
+        JobQueueEntry.ID := CreateGuid();
+        JobQueueEntry."Object Type to Run" := JobQueueEntry."Object Type to Run"::Codeunit;
+        JobQueueEntry."Object ID to Run" := Codeunit::"PI Report Monitor";
+        JobQueueEntry."Recurring Job" := true;
+        JobQueueEntry."No. of Minutes between Runs" := 1;
+        JobQueueEntry.Status := JobQueueEntry.Status::Error;
+        JobQueueEntry.Insert(false);
+
+        // [WHEN] The job is repaired, as on every new review and every upgrade
+        ReportMonitor.RepairJobQueueEntry();
+
+        // [THEN] It runs again, and a run that breaks once is retried instead of stopping the job
+        JobQueueEntry.Get(JobQueueEntry.ID);
+        Assert.AreEqual(JobQueueEntry.Status::Ready, JobQueueEntry.Status, 'The job must run again.');
+        Assert.AreEqual(3, JobQueueEntry."Maximum No. of Attempts to Run", 'A broken run must be retried.');
+        Assert.AreEqual(60, JobQueueEntry."Rerun Delay (sec.)", 'Retries wait a minute.');
+    end;
 
     [Test]
     procedure SentReportWithChangesNotAppliedRaisesTheEventOnce()
