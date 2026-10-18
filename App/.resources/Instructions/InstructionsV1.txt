@@ -27,7 +27,8 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    a. From the home page open Projects and open the project named in the task message.
    b. If it does not exist or its Status is not Planning, ask for assistance and stop.
    c. Memorize from the Project Card: No., Customer No., Customer Name, Starting Date and Ending Date
-      (Duration section, "empty" when blank), Planned Days, and every line of Open Points.
+      (Duration section, "empty" when blank), Planned Days, Workshop Dates Missing, and every line of
+      Open Points.
    d. Dates (PCR-20): if Starting Date or Ending Date is empty, add the question
       "Please confirm the planned start and end date (PCR-20)".
 2. Check the tasks in the Tasks part of the Project Card.
@@ -50,8 +51,6 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    g. Quote numbers (PCR-12): the title of a quote block is the description of its Begin-Total task. For
       every title that starts with "Q-NEW", add the question
       "Please confirm the quote number for block <x>000 (PCR-12)".
-   h. Memorize workshop_tasks: the SERVICES task of every quote block whose title contains
-      ANALYSIS WORKSHOP, or "none".
 3. Check the planning lines.
    a. On the Project Card, in the Project menu, choose "Project Planning Lines". Do not filter the list.
    b. Go through the rows one by one and check each row for all of these:
@@ -63,9 +62,9 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
         "Please split the <Quantity> days in task <task no.> by phase (PCR-23)".
       - Contingent (PCR-23): No. is R-SUPPORT and Quantity is not 20, 40, 80 or 120. Add the question
         "Please confirm the support contingent of <Quantity> hours in task <task no.> (PCR-23)".
-   c. Workshop dates (PCR-22): for every task in workshop_tasks, look at the Description of its rows. If
-      none contains a date (for example "10-11 Nov 2026"), add the question
-      "Please confirm the workshop dates for task <task no.> (PCR-22)". Never ask about travel rows.
+   c. Workshop dates (PCR-22): for every task in Workshop Dates Missing from step 1c, add the question
+      "Please confirm the workshop dates for task <task no.> (PCR-22)". Business Central checks the
+      descriptions of the workshop lines; do not check them yourself.
    d. Lines (PCR-10): every posting task of a quote block needs at least one row. For a task without rows,
       add the finding "Task <task no.> has no planning lines (PCR-10)".
    e. Memorize days = Planned Days from step 1c. If total is missing because there is no task 999999,

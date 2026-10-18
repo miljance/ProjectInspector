@@ -132,12 +132,14 @@ do {
 
 # 3. Compare
 $passed = 0
+$credits = 0
 foreach ($projectNo in $Projects) {
     $r = $reports | Where-Object number -eq $projectNo
+    $credits += [decimal]$r.copilotCredits
     $fresh = $r.report -and ([DateTime]$r.reportCreatedAt).ToUniversalTime() -gt $started
     $problems = if ($fresh) { @(Test-Report $projectNo $r.report) } else { @("no new report (task $($r.taskId), $($r.taskStatus))") }
-    if ($problems.Count -eq 0) { $passed++; Write-Host "PASS $projectNo (task $($r.taskId))" -ForegroundColor Green }
-    else { Write-Host "FAIL $projectNo (task $($r.taskId))" -ForegroundColor Red; $problems | ForEach-Object { Write-Host "     - $_" } }
+    if ($problems.Count -eq 0) { $passed++; Write-Host "PASS $projectNo (task $($r.taskId), $($r.copilotCredits) credits)" -ForegroundColor Green }
+    else { Write-Host "FAIL $projectNo (task $($r.taskId), $($r.copilotCredits) credits)" -ForegroundColor Red; $problems | ForEach-Object { Write-Host "     - $_" } }
     if ($fresh) { (ConvertTo-Lines $r.report) | ForEach-Object { Write-Host "       | $_" -ForegroundColor DarkGray } }
 }
-Write-Host "$passed of $($Projects.Count) projects as expected"
+Write-Host "$passed of $($Projects.Count) projects as expected, $credits Copilot credits"

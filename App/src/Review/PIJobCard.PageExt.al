@@ -21,6 +21,13 @@ pageextension 50100 "PI Job Card" extends "Job Card"
             {
                 ApplicationArea = Jobs;
             }
+            field(PIWorkshopDatesMissing; WorkshopDatesMissing)
+            {
+                ApplicationArea = Jobs;
+                Caption = 'Workshop Dates Missing';
+                ToolTip = 'Specifies the SERVICES tasks of analysis workshop blocks whose planning lines name no date (PCR-22). Project Inspector asks the salesperson for the dates of these tasks.';
+                Editable = false;
+            }
         }
         addafter(General)
         {
@@ -82,12 +89,15 @@ pageextension 50100 "PI Job Card" extends "Job Card"
     trigger OnAfterGetCurrRecord()
     var
         ReportParser: Codeunit "PI Report Parser";
+        ReviewChecks: Codeunit "PI Review Checks";
     begin
         OpenPointsHtml := ReportParser.ToHtml(Rec."PI Open Points");
+        WorkshopDatesMissing := ReviewChecks.GetWorkshopTasksWithoutDates(Rec."No.");
     end;
 
     var
         SentMsg: Label 'Project %1 was sent to Project Inspector.', Comment = '%1 = project No.';
         OpenPointsHtml: Text;
+        WorkshopDatesMissing: Text;
         IsAgentSession: Boolean;
 }

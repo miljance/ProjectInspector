@@ -1,6 +1,7 @@
 namespace Contoso.ProjectInspector;
 
 using Microsoft.Projects.Project.Job;
+using System.Agents;
 
 /// <summary>
 /// For running the demo projects again after the instructions changed (an evaluation run), not for Scribe Agent:
@@ -63,6 +64,10 @@ page 50106 "PI Review Reports API"
                 {
                     Caption = 'Report';
                 }
+                field(copilotCredits; CopilotCredits)
+                {
+                    Caption = 'Copilot Credits';
+                }
             }
         }
     }
@@ -73,6 +78,7 @@ page 50106 "PI Review Reports API"
         ReportStatus: Text;
         ReportCreatedAt: DateTime;
         ReportText: Text;
+        CopilotCredits: Decimal;
 
     trigger OnAfterGetRecord()
     begin
@@ -97,8 +103,12 @@ page 50106 "PI Review Reports API"
 
     local procedure LoadLatestReport()
     var
+        AgentConsumptionOverview: Codeunit "Agent Consumption Overview";
         ReportMonitor: Codeunit "PI Report Monitor";
     begin
         ReportMonitor.GetLatestReport(Rec."No.", TaskId, TaskStatus, ReportStatus, ReportCreatedAt, ReportText);
+        CopilotCredits := 0;
+        if TaskId > 0 then
+            CopilotCredits := AgentConsumptionOverview.GetCopilotCreditsConsumed(TaskId);
     end;
 }

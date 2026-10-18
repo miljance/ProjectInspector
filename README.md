@@ -4,7 +4,7 @@ A Business Central agent, built with the AL Agent SDK, that reviews every new cu
 
 Built for the Directions EMEA 2026 session **"One Voice Note, a Complete Project. AI Agents at Work in Business Central"** (29 Oct 2026). The agent was designed and tested in Agent Designer, exported (`App/.resources/Instructions/ProjectInspector-agent-export.xml`) and moved into this app with the AL **Agent** project template.
 
-**Status:** version 2.26 compiles against BC 29 and all 109 tests pass in a BC 29 sandbox. The full FAB-01-IMP round ran end to end on 18 Oct 2026: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
+**Status:** version 2.27 compiles against BC 29 and all 112 tests pass in a BC 29 sandbox. The full FAB-01-IMP round ran end to end on 18 Oct 2026: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
 
 All demo content is fictional (CRONUS US style). **Never add real customer, company or product names.**
 
@@ -89,7 +89,7 @@ Base URL: `/api/contoso/projectInspector/v1.0/companies({companyId})/`
 | `projectReviews` (GET, PATCH `openPoints`, actions `submitForReview`, `buildProjectStructure`) | 50102 | Scribe Agent through the MCP server (configuration `SCRIBE-AGENT`, Read + Modify, bound actions allowed) |
 | `clarificationAnswers` (POST) | 50103 | Power Automate |
 | `agentStatuses` (GET) | 50105 | Checking a deployment: instructions version and counters of each agent (key `id` = SystemId) |
-| `reviewReports` (GET, action `restartReview`) | 50106 | Evaluation runs: latest report of each project (reply or recorded result), start a new review task |
+| `reviewReports` (GET, action `restartReview`) | 50106 | Evaluation runs: latest report of each project (reply or recorded result), Copilot credits of its task, start a new review task |
 | `reviewResults` (GET) | 50110 | Power Automate: full questions, findings and answers not applied of the review result named in a business event (ReviewResultId), plus decision, status, who decided and when, and whether the reviewer was asked |
 
 `buildProjectStructure(tasksJson, linesJson)` creates all tasks and planning lines of a project without tasks in one call, because the BC MCP server leaves out `Job No.` (Job Task) and `Line No.` (Job Planning Line) on create. Both parameters are JSON arrays sent as text:
@@ -133,6 +133,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50163 PI Review Result Tests | one result per round created by code, older open result replaced, stopped task closes its result, decision proposed from the report and after edits, a proposal carried out only after the agent asked the reviewer, a chosen decision kept, events name their result and the full questions are readable, decision waits for Continue, each result carried out once, edited report, status text, task link, Project action |
 | 50164 PI Planned Days Tests | Planned Days on the Project Card sum only the resource lines planned in days |
 | 50165 PI Planning Lines Page Tests | Project Planning Lines show Line Discount Amount |
+| 50166 PI Review Checks Tests | workshop tasks whose lines name no date are listed (PCR-22), also without a Standard block; other blocks are not checked |
 
 Not covered by unit tests, because they need an agent session or a real agent: `PI Agent Task Dispatcher` (Tasks AL API, task status), the agent-session parts of the result pages (only open results, Decision editable only for the agent), and the agent's behaviour itself. Check those in the sandbox.
 
@@ -171,7 +172,7 @@ Version 2.21 (instructions rewritten so that every rule appears once) matches al
 - **The task message only names the project** (`Review <No.>`); the agent finds the open points in the data (steps 1 to 6 of the instructions).
 - **Dispatcher interface + provider** exist only to make the triggers and the Continue check testable without an activated agent.
 - **Answers come in through a table + API page** (`clarificationAnswers`), not a bound action with parameters: simple for Power Automate, and it keeps a log.
-- **Business Central does the arithmetic.** The report's total is the Billable (Total Price) of task 999999 and its days are **Planned Days** on the Project Card (resource lines with unit of measure DAY). Its discount check reads Line Discount Amount, which Project Inspector shows on Project Planning Lines. Adding up the lines itself, the agent was off by 100 USD or 2 days in some runs.
+- **Business Central does the arithmetic and the mechanical checks.** The report's total is the Billable (Total Price) of task 999999, its days are **Planned Days** on the Project Card, and the workshop tasks without dates (PCR-22) are **Workshop Dates Missing** on the Project Card (`PI Review Checks`). Planned Days sum the resource lines with unit of measure DAY. Its discount check reads Line Discount Amount, which Project Inspector shows on Project Planning Lines. Adding up the lines itself, the agent was off by 100 USD or 2 days in some runs.
 - **Instructions state every rule once.** Each check names its rule ID and the exact finding or question text; the review keeps two lists (findings, questions) from the first step to the report, and checks every planning line in one pass while the page is open. Versions 2.13 to 2.20 added a sentence per failed run and ended with checks that were skipped at random; 2.21 rewrote the text from scratch (190 to 147 lines).
 - **Prices always come from the cards** (PCR-14), also in `buildProjectStructure`; a price discussed with the customer becomes an open point (PCR-15, PCR-16) for a person to decide.
 
@@ -196,7 +197,7 @@ Checked against the System Application source and in the sandbox:
 
 ## Next steps
 
-1. **Evaluation twice before the session.** Re-import the demo data and run `tools/Run-ReviewEval.ps1` two times (12 runs, Copilot credits): one run cannot tell a fix from luck.
+1. **Evaluation twice before the session.** Re-import the demo data and run `tools/Run-ReviewEval.ps1` two times (12 runs, Copilot credits): one run cannot tell a fix from luck. The script prints the Copilot credits of every review task and the total.
 2. **Power Automate.** Test all five flows (questions, approved, rejected, changes not applied, cancelled); the questions loop worked end to end on 18 Oct 2026.
 3. **Job queue before the demo.** Do not publish after the last check: Job Queue Entries, *Project Inspector: send review decisions and notifications* must be Ready.
 4. **Before the session.** The app is published from VS Code (Dev); upload it as a per-tenant extension so a sandbox update does not remove it.
