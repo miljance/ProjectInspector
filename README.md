@@ -4,7 +4,7 @@ A Business Central agent, built with the AL Agent SDK, that reviews every new cu
 
 Built for the Directions EMEA 2026 session **"One Voice Note, a Complete Project. AI Agents at Work in Business Central"** (29 Oct 2026). The agent was designed and tested in Agent Designer, exported (`App/.resources/Instructions/ProjectInspector-agent-export.xml`) and moved into this app with the AL **Agent** project template.
 
-**Status:** version 2.20 compiles against BC 29 and all 96 tests pass in a BC 29 sandbox. The one-approval review flow (Review Result page, decision after Continue) is being tested end to end in the sandbox, see [Next steps](#next-steps).
+**Status:** version 2.21 compiles against BC 29 and all 97 tests pass in a BC 29 sandbox. The one-approval review flow (Review Result page, decision after Continue) is being tested end to end in the sandbox, see [Next steps](#next-steps).
 
 All demo content is fictional (CRONUS US style). **Never add real customer, company or product names.**
 
@@ -71,7 +71,7 @@ The platform limits every text parameter of an external business event to 250 ch
 
 ### Answers from the salesperson
 
-Power Automate posts the answer to `clarificationAnswers`; `PI Review Trigger`.RegisterAnswer adds it to the project's task. Project Inspector applies the answers (step 8): dates, quantities, new planning lines, split of days, quote numbers for `Q-NEW-<n>`, Open Points. It never changes Unit Price or Line Discount %: a price or discount from an answer goes to **Not applied** with the reason (PCR-14, PCR-16) and on to Teams. Then it reviews the changed project and records the next report.
+Power Automate posts the answer to `clarificationAnswers`; `PI Review Trigger`.RegisterAnswer adds it to the project's task. Project Inspector applies the answers (instructions, *When answers arrive*): dates, quantities, new planning lines, split of days, quote numbers for `Q-NEW-<n>`, Open Points. It never changes Unit Price or Line Discount %: a price or discount from an answer goes to **Not applied** with the reason (PCR-14, PCR-16) and on to Teams. Then it reviews the changed project and records the next report.
 
 ### Power Automate flows
 
@@ -132,6 +132,7 @@ The tests do not need an activated agent: `PI Test Library`.UseMockDispatcher re
 | 50159 PI Suggestion Tests | no decision buttons on the result card (the reviewer uses the Decision field), project check elsewhere, the agent's own profile |
 | 50163 PI Review Result Tests | one result per round created by code, older open result replaced, stopped task closes its result, only a decision a person chose is carried out, events name their result and the full questions are readable, decision waits for Continue, each result carried out once, edited report, status text, task link |
 | 50164 PI Planned Days Tests | Planned Days on the Project Card sum only the resource lines planned in days |
+| 50165 PI Planning Lines Page Tests | Project Planning Lines show Line Discount Amount |
 
 Not covered by unit tests, because they need an agent session or a real agent: `PI Agent Task Dispatcher` (Tasks AL API, task status), the agent-session parts of the result pages (only open results, Decision editable only for the agent), and the agent's behaviour itself. Check those in the sandbox.
 
@@ -154,9 +155,9 @@ They were tuned on the six demo projects below, so after a change run all six ag
 | WWI-01-IMP | ERRORS | 19,500 | 10 | Possible duplicate WWI-02-IMP (PCR-03) | 50 hours contingent (PCR-23) |
 | WWI-02-IMP | ERRORS | 12,500 | 10 | Possible duplicate WWI-01-IMP (PCR-03) | Quote number for block 002000 (PCR-12); split 10 days in 002010 (PCR-23) |
 
-FAB-01-IMP is the version Scribe Agent builds from the Teams meeting transcript: Sara splits the 38 days by phase (four lines in 003010), the call gives no quote numbers (blocks `Q-NEW-1` … `Q-NEW-4`), and the Open Points field holds the quote-number line plus users, travel, go-live and the 10 % discount Laura asked for. The RapidStart package `SCRIBE-PRJ-HEADERS` fills the field, so install the app before importing the demo data. The quote-number line is asked by step 6b, block by block. The implementation block has no TRAVEL task until the trips are agreed; when the salesperson answers, the agent adds the task (step 8).
+FAB-01-IMP is the version Scribe Agent builds from the Teams meeting transcript: Sara splits the 38 days by phase (four lines in 003010), the call gives no quote numbers (blocks `Q-NEW-1` … `Q-NEW-4`), and the Open Points field holds the quote-number line plus users, travel, go-live and the 10 % discount Laura asked for. The RapidStart package `SCRIBE-PRJ-HEADERS` fills the field, so install the app before importing the demo data. The quote-number line is asked by step 2g, block by block. The implementation block has no TRAVEL task until the trips are agreed; when the salesperson answers, the agent adds the task (*When answers arrive*).
 
-Version 2.12 (steps 6f and 6g: every Open Points line is asked in the first report) matches all six on freshly imported demo data (18 Oct 2026). The evaluation also checks that every line of the Open Points field is a question in the first report. Tests change the demo data (answers are applied to the projects), so run `tools/Reset-DemoData.ps1 -Tenant <tenant id> -PackageFolder <folder with the .rapidstart files>` before an evaluation or a recording: it deletes the six projects and imports the packages again. RapidStart writes Unit Price and Line Discount % before Business Central takes the price from the resource card, so after applying `SCRIBE-PRJ-LINES` the script sets both again on the planning lines (TAI-01-IMP: 12 × 1,100 and 10 % on 3 × 1,250), otherwise TAI shows 22,200 and no discount.
+Version 2.21 (instructions rewritten so that every rule appears once) matches all six (18 Oct 2026, one evaluation run). Versions 2.13 to 2.20 got 3 to 5 of 6 per run, each missing a different check. The evaluation also checks that every line of the Open Points field is a question in the first report. Tests change the demo data (answers are applied to the projects), so run `tools/Reset-DemoData.ps1 -Tenant <tenant id> -PackageFolder <folder with the .rapidstart files>` before an evaluation or a recording: it deletes the six projects and imports the packages again. RapidStart writes Unit Price and Line Discount % before Business Central takes the price from the resource card, so after applying `SCRIBE-PRJ-LINES` the script sets both again on the planning lines (TAI-01-IMP: 12 × 1,100 and 10 % on 3 × 1,250), otherwise TAI shows 22,200 and no discount.
 
 ## Design decisions
 
@@ -167,10 +168,11 @@ Version 2.12 (steps 6f and 6g: every Open Points line is asked in the first repo
 - **Nothing happens before Continue.** A decision counts only after the agent task that recorded it has completed.
 - **No trigger on project insert**: tasks and planning lines do not exist yet. Scribe Agent calls `submitForReview` when it is done (PCR-27).
 - **One task per project**, External ID = project No. Repeated triggers and answers add messages to that task until it is stopped or archived.
-- **The task message only names the project** (`Review <No.>`); the agent finds the open points in the data (step 6 of the instructions).
+- **The task message only names the project** (`Review <No.>`); the agent finds the open points in the data (steps 1 to 6 of the instructions).
 - **Dispatcher interface + provider** exist only to make the triggers and the Continue check testable without an activated agent.
 - **Answers come in through a table + API page** (`clarificationAnswers`), not a bound action with parameters: simple for Power Automate, and it keeps a log.
-- **Business Central does the arithmetic.** The report's total is the Billable (Total Price) of task 999999 and its days are **Planned Days** on the Project Card (resource lines with unit of measure DAY). Adding up the lines itself, the agent was off by 100 USD or 2 days in some runs.
+- **Business Central does the arithmetic.** The report's total is the Billable (Total Price) of task 999999 and its days are **Planned Days** on the Project Card (resource lines with unit of measure DAY). Its discount check reads Line Discount Amount, which Project Inspector shows on Project Planning Lines. Adding up the lines itself, the agent was off by 100 USD or 2 days in some runs.
+- **Instructions state every rule once.** Each check names its rule ID and the exact finding or question text; the review keeps two lists (findings, questions) from the first step to the report, and checks every planning line in one pass while the page is open. Versions 2.13 to 2.20 added a sentence per failed run and ended with checks that were skipped at random; 2.21 rewrote the text from scratch (190 to 147 lines).
 - **Prices always come from the cards** (PCR-14), also in `buildProjectStructure`; a price discussed with the customer becomes an open point (PCR-15, PCR-16) for a person to decide.
 
 ### BC 29 agent API notes
