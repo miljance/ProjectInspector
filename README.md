@@ -4,7 +4,7 @@ A Business Central agent, built with the AL Agent SDK, that reviews every new cu
 
 Built for the Directions EMEA 2026 session **"One Voice Note, a Complete Project. AI Agents at Work in Business Central"** (29 Oct 2026). The agent was designed and tested in Agent Designer, exported (`App/.resources/Instructions/ProjectInspector-agent-export.xml`) and moved into this app with the AL **Agent** project template.
 
-**Status:** version 2.30 compiles against BC 29 and all 114 tests pass in a BC 29 sandbox. Two evaluation runs in a row matched all six demo projects (18 Oct 2026, about 40 Copilot credits per review). The full FAB-01-IMP round ran end to end: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
+**Status:** version 2.31 requires **Business Central 29** (`application` 29.0.0.0, `runtime` 18.0) and all 114 tests pass in a BC 29 sandbox. Two evaluation runs in a row matched all six demo projects (18 Oct 2026, about 40 Copilot credits per review). The full FAB-01-IMP round ran end to end: review, Send Questions proposed and continued, answers from the Teams card applied, second report with the decision of the engineer, status Quote and the Teams notifications.
 
 All demo content is fictional (CRONUS US style). **Never add real customer, company or product names.**
 
@@ -99,6 +99,8 @@ Base URL: `/api/contoso/projectInspector/v1.0/companies({companyId})/`
 - Only a project in status Planning without tasks is built; a `totaling` in tasksJson is used for Total tasks.
 
 ## Set up
+
+You need a Business Central 29 environment: the app uses the BC 29 agent APIs (for example `Agent Consumption Overview` and `Agent Task`."Needs Attention") and does not install on 28.
 
 1. In `App` and `Test`, copy `.vscode/launch.example.json` to `.vscode/launch.json` and set your tenant and sandbox. `launch.json` is not in the repo.
 2. Run *Download symbols* in both folders, then publish **App** (F5 in the App folder).
