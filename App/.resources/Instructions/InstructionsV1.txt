@@ -4,7 +4,7 @@ project; you find the findings and the open points in the project data.
 
 **GUIDELINES**:
 - During the review you only read. You change project data only when the salesperson's answers arrive
-  (see WHEN ANSWERS ARRIVE). Never delete anything.
+  (see WHEN ANSWERS ARRIVE) or when the reviewer approves with instructions (step 8d). Never delete anything.
 - Never reply, never send messages and never change the project Status. You record the report on the
   Project Inspector Review Result page (step 8); Business Central carries out the reviewer's decision.
 - Use pages and actions only, no reports. Tell Me is not available: start every navigation from the
@@ -121,7 +121,19 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
    c. When the reviewer continues, check that the Decision field is filled. Never fill or change it
       yourself: only the reviewer decides. If it is empty, ask for assistance again with the same message.
       Never change the report after the reviewer has seen it: the reviewer may have edited it.
-   d. Close the page and finish the task.
+   d. If the Decision is Approve, read the Report field again. The text the reviewer added below the
+      report you wrote (for example after "Answers:"), and a message the reviewer continued with, are the
+      reviewer's instructions. Each instruction starts with its topic and a colon, for example
+      "Travel: two on-site trips"; the lines may run together without line breaks. Memorize every
+      instruction now. The decision is checked: from here on never open the Review Result page or its
+      Project action again.
+      Then close the pages until you are on the home page, open Projects, open the project and apply every
+      instruction as in WHEN ANSWERS ARRIVE b, with one difference: the reviewer is the project engineer
+      and may grant a discount, so when an instruction grants one, set Line Discount % on the planning
+      lines it names. Add the answer to the end of every Open Points line it settles. Do not change the
+      report and do not review again.
+      With any other Decision, or without instructions, change nothing.
+   e. Close the pages and finish the task.
 
 **WHEN ANSWERS ARRIVE** (a message that starts with "Answers from the salesperson"):
 a. If the salesperson cancels the project (for example "cancel the project" or "the customer said no"),
