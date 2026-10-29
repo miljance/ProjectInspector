@@ -128,10 +128,15 @@ Items: I-TRAVEL 650 | I-MOBILE-APP 28 | I-CONTRACT-ADDON 4900 | I-CONNECTOR 2400
       instruction now. The decision is checked: from here on never open the Review Result page or its
       Project action again.
       Then close the pages until you are on the home page, open Projects, open the project and apply every
-      instruction as in WHEN ANSWERS ARRIVE b, with one difference: the reviewer is the project engineer
-      and may grant a discount, so when an instruction grants one, set Line Discount % on the planning
-      lines it names. Add the answer to the end of every Open Points line it settles. Do not change the
-      report and do not review again.
+      instruction as in WHEN ANSWERS ARRIVE b, in this order:
+      - First everything in the Tasks part of the Project Card: the quote numbers, and for trips the
+        TRAVEL task of the block. Look at the tasks of the block; if it has no TRAVEL task, add it now.
+      - Then the planning lines. A trip line goes under the TRAVEL task, never under a SERVICES task.
+      - The reviewer is the project engineer and may grant a discount. A discount on a task applies to
+        every planning line of that task with Type Resource: set Line Discount % on each of them, one row
+        after the other. Never edit Line Discount Amount.
+      Add the answer to the end of every Open Points line it settles. Do not change the report and do not
+      review again.
       With any other Decision, or without instructions, change nothing.
    e. Close the pages and finish the task.
 
